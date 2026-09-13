@@ -11,13 +11,20 @@ import { Variant } from '../../components/Alert/SnackbarContentWrapper';
 import useStyles from './useStyles';
 
 interface LayoutProps {
+  mode: 'light' | 'dark';
+  onToggleMode: () => void;
   flash: {
     message: string;
     variant: Variant;
   };
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, flash }) => {
+const Layout: React.FC<LayoutProps> = ({
+  children,
+  flash,
+  mode,
+  onToggleMode,
+}) => {
   const [addOpen, setAddOpen] = useState(false);
   const [query, onSearch] = useState<string>();
   const classes = useStyles({});
@@ -34,14 +41,14 @@ const Layout: React.FC<LayoutProps> = ({ children, flash }) => {
   }, [query, history]);
 
   return (
-    <div>
+    <div className={classes.root}>
       {flash.message && (
         <Alert variant={flash.variant} message={flash.message} />
       )}
       {addOpen && (
         <EditModal onClose={hideAdd} urlKey={urlQuery || undefined} />
       )}
-      <Header onSearch={onSearch} />
+      <Header onSearch={onSearch} mode={mode} onToggleMode={onToggleMode} />
       {children}
       <Tooltip title="Add New URL">
         <Fab

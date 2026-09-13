@@ -7,7 +7,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     overflowX: 'auto',
   },
   url: {
-    color: 'grey',
+    color: theme.palette.text.secondary,
     textDecoration: 'none',
     '&:hover': {
       textDecoration: 'underline',
@@ -17,7 +17,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     width: 10,
   },
   edit: {
-    color: 'grey',
+    color: theme.palette.text.secondary,
   },
   delete: {
     color: theme.palette.error.main,
@@ -37,7 +37,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   urlReplace: {
-    color: '#4c4c4c',
+    color: theme.palette.text.primary,
     fontWeight: 700,
   },
 }));

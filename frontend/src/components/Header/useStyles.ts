@@ -1,6 +1,7 @@
+import { Theme } from '@material-ui/core/styles';
 import { makeStyles } from '@material-ui/styles';
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme: Theme) => ({
   grow: {
     flexGrow: 1,
   },
@@ -11,10 +12,10 @@ const useStyles = makeStyles({
   link: {
     textDecoration: 'none',
     padding: 10,
-    color: 'white',
+    color: theme.palette.primary.contrastText,
     marginLeft: 30,
     fontWeight: 600,
   },
-});
+}));
 
 export default useStyles;

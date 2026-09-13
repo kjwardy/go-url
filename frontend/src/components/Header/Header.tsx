@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import AppBar from '@material-ui/core/AppBar';
+import IconButton from '@material-ui/core/IconButton';
+import Tooltip from '@material-ui/core/Tooltip';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
+import Brightness4Icon from '@material-ui/icons/Brightness4';
+import Brightness7Icon from '@material-ui/icons/Brightness7';
 import Search from '../Search';
 import useStyles from './useStyles';
 
 interface HeaderProps {
   onSearch: (query: string) => void;
+  mode: 'light' | 'dark';
+  onToggleMode: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSearch }) => {
+const Header: React.FC<HeaderProps> = ({ onSearch, mode, onToggleMode }) => {
   const [name, setName] = useState('');
   useEffect(() => {
     const name = Cookies.get('user');
@@ -33,6 +39,18 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
         </a>
         <div className={classes.grow} />
         <Search onSearch={onSearch} />
+        <Tooltip
+          title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
+        >
+          <IconButton
+            color="inherit"
+            aria-label="Toggle dark mode"
+            data-e2e="theme-toggle"
+            onClick={onToggleMode}
+          >
+            {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
+          </IconButton>
+        </Tooltip>
 
         {name && <span className={classes.name}>{name}</span>}
       </Toolbar>

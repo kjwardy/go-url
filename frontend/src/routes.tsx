@@ -8,9 +8,14 @@ import React from 'react';
 import Home from './views/Home';
 import Layout from './views/Layout';
 
-const Routes = () => (
+interface RoutesProps {
+  mode: 'light' | 'dark';
+  onToggleMode: () => void;
+}
+
+const Routes: React.FC<RoutesProps> = ({ mode, onToggleMode }) => (
   <Router basename="/go">
-    <Layout>
+    <Layout mode={mode} onToggleMode={onToggleMode}>
       <Switch>
         <Route exact path="/:query?" component={Home} />
         <Redirect to="/" />

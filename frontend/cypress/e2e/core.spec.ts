@@ -15,6 +15,15 @@ context('Core', () => {
     cy.getHandle('Most Popular').contains('h3', 'Most Popular');
   });
 
+  it('should persist dark mode', () => {
+    cy.window().then((win) => win.localStorage.setItem('theme', 'light'));
+    cy.reload();
+    cy.getHandle('theme-toggle').click();
+    cy.window().its('localStorage.theme').should('equal', 'dark');
+    cy.reload();
+    cy.window().its('localStorage.theme').should('equal', 'dark');
+  });
+
   it('should redirect to app if not found', () => {
     const key = getKey();
     const url = faker.internet.url();
