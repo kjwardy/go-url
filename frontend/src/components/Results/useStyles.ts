@@ -19,7 +19,10 @@ const useStyles = makeStyles((theme: Theme) => ({
   edit: {
     color: 'grey',
   },
-  editIcon: {
+  delete: {
+    color: theme.palette.error.main,
+  },
+  actionIcon: {
     padding: 3,
   },
   tableRow: {

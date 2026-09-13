@@ -44,6 +44,12 @@ func (u *URL) Save() error {
 	return err
 }
 
+// Delete removes a url from the db
+func (u *URL) Delete() error {
+	_, err := db.GetDB().Model(u).WherePK().Delete()
+	return err
+}
+
 // IncrementViewCount increments the view count of all the keys passed in
 func (u *URL) IncrementViewCount(keys []string) error {
 	_, err := db.GetDB().Model(&URL{}).WhereIn("key IN (?)", pg.In(keys)).Set("views = views + 1").Update()

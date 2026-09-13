@@ -10,13 +10,14 @@ import useStyles from './useStyles';
 interface HomeProps {
   displayFlashError: (message: string) => void;
   search: {
-    results?: any;
+    results?: any[];
+    created?: any[];
   };
 }
 
 const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
-  const [querySearchResults, setQuerySearchResults] = useState('');
-  const [popular, setPopular] = useState();
+  const [querySearchResults, setQuerySearchResults] = useState<any[]>();
+  const [popular, setPopular] = useState<any[]>();
   const classes = useStyles({});
   const match = useRouteMatch<{ query: string }>();
   const location = useLocation();
@@ -42,19 +43,33 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     }
   }, [match.params.query]);
 
+  const created = search.created || [];
+  // Place newly created URLs first and remove any duplicate API results
+  const addCreated = (results: any[] = [], additions = created) => [
+    ...additions,
+    ...results.filter(
+      (result) =>
+        !additions.some((createdUrl) => createdUrl.key === result.key),
+    ),
+  ];
+  const searchResults = search.results || querySearchResults;
+  const createdSearchResults = match.params.query
+    ? created.filter((result) => result.key.includes(match.params.query))
+    : [];
+
   return (
     <div>
-      {(search.results || querySearchResults) && (
+      {searchResults && (
         <div className={classes.container}>
           <Results
-            data={search.results || querySearchResults}
+            data={addCreated(searchResults, createdSearchResults)}
             title="Search Results"
           />
         </div>
       )}
-      {popular && (
+      {(popular || created.length > 0) && (
         <div className={classes.container}>
-          <Results data={popular} title="Most Popular" />
+          <Results data={addCreated(popular)} title="Most Popular" />
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import DeleteIcon from '@material-ui/icons/Delete';
 import EditIcon from '@material-ui/icons/Edit';
 import IconButton from '@material-ui/core/IconButton';
 import LaunchIcon from '@material-ui/icons/Launch';
@@ -9,7 +10,8 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 
-import Modal from '../Modal';
+import DeleteModal from '../DeleteModal';
+import EditModal from '../EditModal';
 import useStyles from './useStyles';
 
 interface IResult {
@@ -26,8 +28,13 @@ interface ResultsProps {
 
 const Results: React.FC<ResultsProps> = ({ data, title }) => {
   const [selected, setSelected] = useState<IResult | null>(null);
+  const [deleteSelected, setDeleteSelected] = useState<IResult | null>(null);
+  // Track deleted keys locally so rows disappear without reloading the page
+  const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
   const clearSelected = useCallback(() => setSelected(null), []);
+  const clearDeleteSelected = useCallback(() => setDeleteSelected(null), []);
   const classes = useStyles({});
+  const results = data.filter((result) => !deletedKeys.includes(result.key));
 
   const getFormattedUrl = (url: string) => {
     const regex = /({{\$\d+}})/g;
@@ -45,17 +52,26 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
   return (
     <div>
       {selected && (
-        <Modal
+        <EditModal
           edit
           urlKey={selected.key}
           url={selected.url || selected.alias.join(',')}
           onClose={clearSelected}
         />
       )}
+      {deleteSelected && (
+        <DeleteModal
+          urlKey={deleteSelected.key}
+          onClose={clearDeleteSelected}
+          onDeleted={() =>
+            setDeletedKeys((keys) => [...keys, deleteSelected.key])
+          }
+        />
+      )}
 
       <Paper className={classes.paper} data-e2e={title}>
         <h3>{title}</h3>
-        {!data.length ? (
+        {!results.length ? (
           <p>No results found. Help others by adding it.</p>
         ) : (
           <Table size="small">
@@ -64,11 +80,11 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
                 <TableCell>Key</TableCell>
                 <TableCell>Url</TableCell>
                 <TableCell align="right">Views</TableCell>
-                <TableCell align="right">Edit</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((r) => (
+              {results.map((r) => (
                 <TableRow key={r.key} className={classes.tableRow}>
                   <TableCell>{r.key}</TableCell>
                   <TableCell className={classes.urlCell}>
@@ -93,10 +109,20 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
                   <TableCell align="right">{r.views}</TableCell>
                   <TableCell align="right">
                     <IconButton
-                      className={classes.editIcon}
+                      className={classes.actionIcon}
                       onClick={() => setSelected(r)}
+                      aria-label={`Edit ${r.key}`}
+                      data-e2e="edit"
                     >
                       <EditIcon className={classes.edit} />
+                    </IconButton>
+                    <IconButton
+                      className={classes.actionIcon}
+                      onClick={() => setDeleteSelected(r)}
+                      aria-label={`Delete ${r.key}`}
+                      data-e2e="delete"
+                    >
+                      <DeleteIcon className={classes.delete} />
                     </IconButton>
                   </TableCell>
                 </TableRow>

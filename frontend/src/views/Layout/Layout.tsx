@@ -4,7 +4,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import AddIcon from '@material-ui/icons/Add';
 import Fab from '@material-ui/core/Fab';
 import Tooltip from '@material-ui/core/Tooltip';
-import Modal from '../../components/Modal';
+import EditModal from '../../components/EditModal';
 import Header from '../../components/Header';
 import Alert from '../../components/Alert';
 import { Variant } from '../../components/Alert/SnackbarContentWrapper';
@@ -38,7 +38,9 @@ const Layout: React.FC<LayoutProps> = ({ children, flash }) => {
       {flash.message && (
         <Alert variant={flash.variant} message={flash.message} />
       )}
-      {addOpen && <Modal onClose={hideAdd} urlKey={urlQuery || undefined} />}
+      {addOpen && (
+        <EditModal onClose={hideAdd} urlKey={urlQuery || undefined} />
+      )}
       <Header onSearch={onSearch} />
       {children}
       <Tooltip title="Add New URL">

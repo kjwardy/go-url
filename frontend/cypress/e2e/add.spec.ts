@@ -23,11 +23,13 @@ context('Add', () => {
   });
 
   it('should allow valid urls', () => {
+    const key = getKey();
     cy.openAddModal();
 
-    cy.enterUrlDetails();
+    cy.enterUrlDetails({ key });
 
     cy.submitModal('Successfully set');
+    cy.getHandle('Most Popular').contains('td', key);
   });
 
   it('should not allow key with invalid characters', () => {

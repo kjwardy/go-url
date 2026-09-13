@@ -12,24 +12,27 @@ import {
   displayFlashError,
   displayFlashSuccess,
 } from '../../redux/flash/actions';
+import { urlCreated } from '../../redux/search/actions';
 import useStyles from './useStyles';
 
-interface ModalProps {
+interface EditModalProps {
   edit?: Boolean;
   urlKey?: string;
   url?: string;
   onClose: () => void;
   displayFlashSuccess: (message: string) => void;
   displayFlashError: (message: string) => void;
+  urlCreated: (data: any) => void;
 }
 
-const Modal: React.FC<ModalProps> = ({
+const EditModal: React.FC<EditModalProps> = ({
   edit,
   urlKey: initialKey = '',
   url: initialUrl = '',
   onClose,
   displayFlashSuccess,
   displayFlashError,
+  urlCreated,
 }) => {
   const [urlKey, setKey] = useState(initialKey);
   const [url, setUrl] = useState(initialUrl);
@@ -47,12 +50,22 @@ const Modal: React.FC<ModalProps> = ({
         displayFlashSuccess(
           `Successfully set ${data.key} to ${data.url || data.alias}`,
         );
+        // Add new URLs to the displayed results without reloading the page
+        if (!edit) urlCreated(data);
         onClose();
       })
       .catch((err) =>
         displayFlashError(err.response.data.message || err.response.data),
       );
-  }, [query, displayFlashSuccess, displayFlashError, onClose, edit]);
+  }, [
+    query,
+    displayFlashSuccess,
+    displayFlashError,
+    onClose,
+    edit,
+    urlCreated,
+  ]);
+
   return (
     <Dialog open onClose={onClose} data-e2e="modal">
       <form
@@ -112,10 +125,11 @@ const Modal: React.FC<ModalProps> = ({
 const mapDispatch = {
   displayFlashSuccess,
   displayFlashError,
+  urlCreated,
 };
 
 export default connect(
   null,
   mapDispatch,
   // @ts-ignore
-)(Modal);
+)(EditModal);

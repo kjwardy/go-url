@@ -52,6 +52,7 @@ func Init(e *echo.Echo) {
 	e.GET("/*", h.Url)
 	e.POST("/:key", h.CreateUrl)
 	e.PUT("/:key", h.UpdateUrl)
+	e.DELETE("/:key", h.DeleteUrl)
 
 	e.GET("/api/search", h.Search)
 	e.GET("/api/search/suggest", h.SearchSuggestions)

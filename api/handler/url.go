@@ -191,3 +191,22 @@ func (h *Handler) CreateUrl(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, u)
 }
+
+// DeleteUrl removes the URL matching the provided key
+func (h *Handler) DeleteUrl(c echo.Context) error {
+	key := strings.ToLower(c.Param("key"))
+	if !ValidateKey(key) {
+		return echo.NewHTTPError(http.StatusBadRequest, "The key provided is not valid. It can only contain letters, numbers, _ and -")
+	}
+	u, err := urlModel.Find(key)
+	if err != nil {
+		return err
+	}
+	if u == nil {
+		return echo.NewHTTPError(http.StatusNotFound, fmt.Sprintf("%s was not found in the database", key))
+	}
+	if err := u.Delete(); err != nil {
+		return err
+	}
+	return c.NoContent(http.StatusNoContent)
+}
