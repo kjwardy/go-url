@@ -73,7 +73,7 @@ yarn start
 
 ```sh
 cd api
-dep ensure
+go mod download
 POSTGRES_PASS=password HOSTS=localhost APP_URI=http://localhost:3000 go run server.go
 ```
 
