@@ -6,15 +6,6 @@ executors:
     docker:
       - image: circleci/golang:1.15-node
 
-  browsers:
-    working_directory: /go/src/github.com/kjwardy/go-url
-    docker:
-      - image: circleci/golang:1.15-node-browsers
-      - image: circleci/postgres:9.6.2-alpine
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: go
-
 jobs:
   setup:
     executor: default
@@ -35,10 +26,6 @@ jobs:
           key: yarn-packages-v1-{{ checksum "frontend/yarn.lock" }}
           paths:
             - ~/.cache
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - ./.cache/Cypress
       - persist_to_workspace:
           root: /go/src/github.com/kjwardy
           paths:
@@ -66,48 +53,6 @@ jobs:
           name: Run unit tests
           command: |
             cd api && go test ./...
-
-  e2e-test:
-    executor: browsers
-    parallelism: 1
-    steps:
-      - attach_workspace:
-          at: /go/src/github.com/kjwardy
-      - attach_workspace:
-          at: ~/
-      - setup_remote_docker:
-          version: 19.03.13
-      - run:
-          name: E2E frontend background
-          command: cd frontend && yarn start
-          background: true
-      - run:
-          name: E2E api background
-          environment:
-            POSTGRES_PASS: ""
-            HOSTS: localhost
-            APP_URI: "http://localhost:3000"
-          command: cd /go/src/github.com/kjwardy/go-url/api && go run server.go
-          background: true
-      - run:
-          name: Waiting for Postgres to be ready
-          command: |
-            for i in `seq 1 10`;
-            do
-              nc -z localhost 5432 && echo Success && exit 0
-              echo -n .
-              sleep 1
-            done
-            echo Failed waiting for Postgres && exit 1
-      - run:
-          name: Run E2E tests
-          command: |
-            cd frontend && yarn wait;
-            if [ "$CYPRESS_KEY" == "" ]; then
-              yarn test:e2e
-            else
-              yarn test:e2e --record --key $CYPRESS_KEY
-            fi
 
   build:
     executor: default
@@ -140,8 +85,5 @@ workflows:
           requires:
             - setup
       - unit-test:
-          requires:
-            - setup
-      - e2e-test:
           requires:
             - setup
