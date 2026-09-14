@@ -3,9 +3,10 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/kjwardy/go-url/api/db"
 	"github.com/go-pg/pg"
+	"github.com/kjwardy/go-url/api/db"
 	"github.com/labstack/gommon/log"
 )
 
@@ -15,6 +16,13 @@ type URL struct {
 	URL   string   `json:"url"`
 	Alias []string `json:"alias"`
 	Views int      `json:"views" sql:"default:0"`
+}
+
+// URLQuery records when a URL key is queried
+type URLQuery struct {
+	ID        int64     `json:"id" sql:",pk"`
+	URLKey    string    `json:"url_key"`
+	QueriedAt time.Time `json:"queried_at"`
 }
 
 // Find returns matching URL
@@ -50,14 +58,39 @@ func (u *URL) Delete() error {
 	return err
 }
 
-// IncrementViewCount increments the view count of all the keys passed in
+// IncrementViewCount increments view counts and records timestamped queries
 func (u *URL) IncrementViewCount(keys []string) error {
-	_, err := db.GetDB().Model(&URL{}).WhereIn("key IN (?)", pg.In(keys)).Set("views = views + 1").Update()
+	queries := newURLQueries(keys, time.Now().UTC())
+	queryKeys := make([]string, len(queries))
+	for i, query := range queries {
+		queryKeys[i] = query.URLKey
+	}
+
+	err := db.GetDB().RunInTransaction(func(tx *pg.Tx) error {
+		if _, err := tx.Model(&URL{}).WhereIn("key IN (?)", pg.In(queryKeys)).Set("views = views + 1").Update(); err != nil {
+			return err
+		}
+		return tx.Insert(&queries)
+	})
 	if err != nil {
-		log.Error("Error while updating view count")
+		log.Error("Error while recording URL queries")
 		log.Error(err)
 	}
 	return err
+}
+
+func newURLQueries(keys []string, queriedAt time.Time) []URLQuery {
+	queries := make([]URLQuery, 0, len(keys))
+	seen := make(map[string]bool)
+	for _, key := range keys {
+		key = strings.ToLower(strings.Split(key, "/")[0])
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		queries = append(queries, URLQuery{URLKey: key, QueriedAt: queriedAt})
+	}
+	return queries
 }
 
 // GetUrlsFromKeys returns all the db records that match the keys

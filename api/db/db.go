@@ -50,4 +50,23 @@ func createSchema() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	_, err = database.Exec(`
+		CREATE TABLE IF NOT EXISTS url_queries (
+			id bigserial PRIMARY KEY,
+			url_key text NOT NULL REFERENCES urls (key) ON DELETE CASCADE,
+			queried_at timestamptz NOT NULL DEFAULT now()
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = database.Exec(`
+		CREATE INDEX IF NOT EXISTS url_queries_url_key_queried_at_idx
+		ON url_queries (url_key, queried_at)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
