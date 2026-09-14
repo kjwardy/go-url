@@ -6,7 +6,7 @@ import (
 
 	"net"
 
-	"github.com/alexbrazier/go-url/api/config"
+	"github.com/kjwardy/go-url/api/config"
 	"github.com/labstack/echo"
 )
 

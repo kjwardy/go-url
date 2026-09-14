@@ -72,10 +72,10 @@ context('Core', () => {
     const url = 'https://github.com/{{$1}}/{{$2}}';
     cy.addUrl({ key, url });
 
-    cy.request(`/${key}/alexbrazier/go-url`).then((res: any) => {
+    cy.request(`/${key}/kjwardy/go-url`).then((res: any) => {
       expect(res.redirects).length.greaterThan(0);
       expect(res.redirects[0]).to.equal(
-        `307: https://github.com/alexbrazier/go-url`,
+        `307: https://github.com/kjwardy/go-url`,
       );
       done();
     });
@@ -86,10 +86,10 @@ context('Core', () => {
     const url = 'https://github.com/{{$2}}/{{$1}}';
     cy.addUrl({ key, url });
 
-    cy.request(`/${key}/go-url/alexbrazier`).then((res: any) => {
+    cy.request(`/${key}/go-url/kjwardy`).then((res: any) => {
       expect(res.redirects).length.greaterThan(0);
       expect(res.redirects[0]).to.equal(
-        `307: https://github.com/alexbrazier/go-url`,
+        `307: https://github.com/kjwardy/go-url`,
       );
       done();
     });

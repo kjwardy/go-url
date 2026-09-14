@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/alexbrazier/go-url/api/config"
+	"github.com/kjwardy/go-url/api/config"
 	"github.com/labstack/echo"
 	verifier "github.com/okta/okta-jwt-verifier-golang"
 )

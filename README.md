@@ -1,8 +1,8 @@
 # Go URL
 
-[![CircleCI](https://circleci.com/gh/alexbrazier/go-url.svg?style=svg)](https://circleci.com/gh/alexbrazier/go-url)
+[![CircleCI](https://circleci.com/gh/kjwardy/go-url.svg?style=svg)](https://circleci.com/gh/kjwardy/go-url)
 [![Cypress Dashboard](https://img.shields.io/badge/cypress-dashboard-brightgreen.svg)](https://dashboard.cypress.io/#/projects/7dct13/runs)
-[![dependencies](https://img.shields.io/david/alexbrazier/go-url.svg?path=frontend)](https://david-dm.org/alexbrazier/go-url?path=frontend)
+[![dependencies](https://img.shields.io/david/kjwardy/go-url.svg?path=frontend)](https://david-dm.org/kjwardy/go-url?path=frontend)
 
 A simple URL shortener written in Go with a React frontend and Postgres database.
 
@@ -35,7 +35,7 @@ docker run -d -P --name db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e PO
 **Start App**
 
 ```sh
-docker run -p 1323:1323 -e HOSTS=localhost -e APP_URI=http://localhost:1323 --link db alexbrazier/go-url
+docker run -p 1323:1323 -e HOSTS=localhost -e APP_URI=http://localhost:1323 --link db kjwardy/go-url
 ```
 
 Alteratively use the docker-compose file and run:

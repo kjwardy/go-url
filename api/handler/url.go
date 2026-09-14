@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alexbrazier/go-url/api/config"
-	"github.com/alexbrazier/go-url/api/model"
-	"github.com/alexbrazier/go-url/api/utils"
+	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/model"
+	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
 )
 

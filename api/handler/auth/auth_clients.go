@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/alexbrazier/go-url/api/config"
+	"github.com/kjwardy/go-url/api/config"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
 )

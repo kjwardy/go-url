@@ -2,12 +2,12 @@
 # Build api
 ############################
 FROM golang:1.15.15-alpine3.14 AS apibuilder
-RUN apk update && apk add --no-cache git dep
-COPY api $GOPATH/src/github.com/alexbrazier/go-url/api
-WORKDIR $GOPATH/src/github.com/alexbrazier/go-url/api
+RUN apk update && apk add --no-cache git
+COPY api /app/api
+WORKDIR /app/api
 
 # install the dependencies without checking for go code
-RUN dep ensure -vendor-only
+RUN go mod download
 
 # Build my app
 RUN go build -o /go/bin/server

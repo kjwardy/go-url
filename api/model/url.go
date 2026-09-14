@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alexbrazier/go-url/api/db"
+	"github.com/kjwardy/go-url/api/db"
 	"github.com/go-pg/pg"
 	"github.com/labstack/gommon/log"
 )
