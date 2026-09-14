@@ -93,14 +93,17 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
                         <a
                           key={alias}
                           className={classes.url}
-                          href={`/${alias}`}
+                          href={`/${encodeURIComponent(alias)}`}
                         >
                           {alias}
                           <LaunchIcon className={classes.launchIcon} />
                         </a>
                       ))
                     ) : (
-                      <a className={classes.url} href={`/${r.key}`}>
+                      <a
+                        className={classes.url}
+                        href={`/${encodeURIComponent(r.key)}`}
+                      >
                         {getFormattedUrl(r.url)}
                         <LaunchIcon className={classes.launchIcon} />
                       </a>

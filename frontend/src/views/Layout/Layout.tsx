@@ -33,11 +33,12 @@ const Layout: React.FC<LayoutProps> = ({
   const location = useLocation();
   // Pre-populate field if not found
   const urlQuery =
-    location.search.includes('message=') && location.pathname.slice(1);
+    location.search.includes('message=') &&
+    decodeURIComponent(location.pathname.slice(1));
 
   useEffect(() => {
     if (query === undefined) return;
-    history.push(`/${query}`);
+    history.push(`/${encodeURIComponent(query)}`);
   }, [query, history]);
 
   return (

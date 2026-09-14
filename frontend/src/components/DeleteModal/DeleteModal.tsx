@@ -38,7 +38,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
   const deleteUrl = () => {
     setDeleting(true);
     axios
-      .delete(`/${urlKey}`)
+      .delete(`/${encodeURIComponent(urlKey)}`)
       .then(() => {
         displayFlashSuccess(`Successfully deleted ${urlKey}`);
         onDeleted();

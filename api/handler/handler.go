@@ -11,8 +11,8 @@ type Handler struct{}
 
 var (
 	urlModel              = &model.URL{}
-	validateKeyRegexp     = regexp.MustCompile("^[\\w-]+$")
-	validateKeyPathRegexp = regexp.MustCompile("^[\\w-\\/]+$")
+	validateKeyRegexp     = regexp.MustCompile("^[\\w-]+( +[\\w-]+)*$")
+	validateKeyPathRegexp = regexp.MustCompile("^[\\w-]+( +[\\w-]+)*(\\/[\\w-]+( +[\\w-]+)*)*$")
 )
 
 // ValidateKey validates a key against the required format

@@ -45,7 +45,7 @@ const EditModal: React.FC<EditModalProps> = ({
     if (!query) return;
     axios({
       method: edit ? 'put' : 'post',
-      url: `/${query.urlKey}`,
+      url: `/${encodeURIComponent(query.urlKey)}`,
       data: { url: query.url },
     })
       .then(({ data }: any) => {

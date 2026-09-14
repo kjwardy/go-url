@@ -32,6 +32,17 @@ context('Add', () => {
     cy.getHandle('Most Popular').contains('td', key);
   });
 
+  it('should allow keys with spaces', () => {
+    const key = `${getKey()} with spaces`;
+    cy.openAddModal();
+
+    cy.enterUrlDetails({ key });
+
+    cy.submitModal('Successfully set');
+    cy.getHandle('Most Popular').contains('td', key);
+    cy.getResult(key);
+  });
+
   it('should not allow key with invalid characters', () => {
     cy.openAddModal();
 

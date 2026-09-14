@@ -122,7 +122,7 @@ func (h *Handler) isAlias(alias string) (bool, error) {
 func (h *Handler) validateUrl(c echo.Context) (*model.URL, error) {
 	key := strings.ToLower(c.Param("key"))
 	if valid := ValidateKey(key); !valid {
-		message := fmt.Sprint("The key provided is not valid. It can only contain letters, numbers, _ and -")
+		message := fmt.Sprint("The key provided is not valid. It can only contain letters, numbers, spaces, _ and -")
 		return nil, echo.NewHTTPError(http.StatusBadRequest, message)
 	}
 	u := &model.URL{
@@ -196,7 +196,7 @@ func (h *Handler) CreateUrl(c echo.Context) error {
 func (h *Handler) DeleteUrl(c echo.Context) error {
 	key := strings.ToLower(c.Param("key"))
 	if !ValidateKey(key) {
-		return echo.NewHTTPError(http.StatusBadRequest, "The key provided is not valid. It can only contain letters, numbers, _ and -")
+		return echo.NewHTTPError(http.StatusBadRequest, "The key provided is not valid. It can only contain letters, numbers, spaces, _ and -")
 	}
 	u, err := urlModel.Find(key)
 	if err != nil {

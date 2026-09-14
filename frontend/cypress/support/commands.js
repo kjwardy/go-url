@@ -36,7 +36,7 @@ Cypress.Commands.add('addUrl', ({ key, url } = {}) => {
 });
 
 Cypress.Commands.add('getResult', (key) => {
-  cy.visit(`/go/${key}`);
+  cy.visit(`/go/${encodeURIComponent(key)}`);
   return cy.getHandle('Search Results').contains('td', key).parent();
 });
 
