@@ -1,6 +1,6 @@
 # Go URL
 
-[![CircleCI](https://circleci.com/gh/wardweb-homelabs/go-url.svg?style=svg)](https://circleci.com/gh/wardweb-homelabs/go-url)
+[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/PTuWgk5XLi4dqPB1MLTwdb/3aA338iwpp64iPjk344dZR/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/PTuWgk5XLi4dqPB1MLTwdb/3aA338iwpp64iPjk344dZR/tree/main)
 
 A simple URL shortener written in Go with a React frontend and Postgres database.
 

@@ -60,7 +60,7 @@ jobs:
       - attach_workspace:
           at: /go/src/github.com/kjwardy
       - setup_remote_docker:
-          version: 19.03.13
+          version: docker24
       - run:
           name: Build Docker image
           command: |
@@ -73,7 +73,7 @@ jobs:
               docker push kjwardy/go-url
             fi
 
-workflows:
+workflows:D
   version: 2
   main-workflow:
     jobs:
