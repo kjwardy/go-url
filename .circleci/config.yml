@@ -73,7 +73,7 @@ jobs:
               docker push kjwardy/go-url
             fi
 
-workflows:D
+workflows:
   version: 2
   main-workflow:
     jobs:
