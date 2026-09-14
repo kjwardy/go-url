@@ -12,7 +12,7 @@ import {
   displayFlashError,
   displayFlashSuccess,
 } from '../../redux/flash/actions';
-import { urlCreated } from '../../redux/search/actions';
+import { urlCreated, urlUpdated } from '../../redux/search/actions';
 import useStyles from './useStyles';
 
 interface EditModalProps {
@@ -23,6 +23,7 @@ interface EditModalProps {
   displayFlashSuccess: (message: string) => void;
   displayFlashError: (message: string) => void;
   urlCreated: (data: any) => void;
+  urlUpdated: (data: any) => void;
 }
 
 const EditModal: React.FC<EditModalProps> = ({
@@ -33,6 +34,7 @@ const EditModal: React.FC<EditModalProps> = ({
   displayFlashSuccess,
   displayFlashError,
   urlCreated,
+  urlUpdated,
 }) => {
   const [urlKey, setKey] = useState(initialKey);
   const [url, setUrl] = useState(initialUrl);
@@ -50,8 +52,9 @@ const EditModal: React.FC<EditModalProps> = ({
         displayFlashSuccess(
           `Successfully set ${data.key} to ${data.url || data.alias}`,
         );
-        // Add new URLs to the displayed results without reloading the page
-        if (!edit) urlCreated(data);
+        // Update the displayed results without reloading the page
+        if (edit) urlUpdated(data);
+        else urlCreated(data);
         onClose();
       })
       .catch((err) =>
@@ -64,6 +67,7 @@ const EditModal: React.FC<EditModalProps> = ({
     onClose,
     edit,
     urlCreated,
+    urlUpdated,
   ]);
 
   return (
@@ -126,6 +130,7 @@ const mapDispatch = {
   displayFlashSuccess,
   displayFlashError,
   urlCreated,
+  urlUpdated,
 };
 
 export default connect(

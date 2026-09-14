@@ -22,6 +22,6 @@ context('Edit', () => {
     cy.get('input#url').clear().type(newUrl);
     cy.submitModal('Successfully set');
 
-    cy.getResult(key).contains(newUrl);
+    cy.getHandle('Search Results').contains(newUrl);
   });
 });

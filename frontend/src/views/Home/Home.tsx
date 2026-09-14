@@ -12,6 +12,7 @@ interface HomeProps {
   search: {
     results?: any[];
     created?: any[];
+    updated?: any[];
   };
 }
 
@@ -52,6 +53,15 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         !additions.some((createdUrl) => createdUrl.key === result.key),
     ),
   ];
+  const updated = search.updated || [];
+  // Replace matching rows while preserving view counts omitted by updates
+  const applyUpdates = (results: any[]) =>
+    results.map((result) => {
+      const updatedUrl = updated.find((url) => url.key === result.key);
+      return updatedUrl
+        ? { ...result, ...updatedUrl, views: result.views }
+        : result;
+    });
   const searchResults = search.results || querySearchResults;
   const createdSearchResults = match.params.query
     ? created.filter((result) => result.key.includes(match.params.query))
@@ -62,14 +72,17 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       {searchResults && (
         <div className={classes.container}>
           <Results
-            data={addCreated(searchResults, createdSearchResults)}
+            data={applyUpdates(addCreated(searchResults, createdSearchResults))}
             title="Search Results"
           />
         </div>
       )}
       {(popular || created.length > 0) && (
         <div className={classes.container}>
-          <Results data={addCreated(popular)} title="Most Popular" />
+          <Results
+            data={applyUpdates(addCreated(popular))}
+            title="Most Popular"
+          />
         </div>
       )}
     </div>
