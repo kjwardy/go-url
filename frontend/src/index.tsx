@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
+import { createTheme, ThemeProvider } from '@material-ui/core/styles';
 import Routes from './routes';
 import store from './redux';
 import { init as initSentry } from '@sentry/browser';
@@ -25,10 +25,7 @@ const getInitialMode = () => {
 
 const App = () => {
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialMode);
-  const theme = useMemo(
-    () => createMuiTheme({ palette: { type: mode } }),
-    [mode],
-  );
+  const theme = useMemo(() => createTheme({ palette: { type: mode } }), [mode]);
   const toggleMode = () => {
     const nextMode = mode === 'light' ? 'dark' : 'light';
     localStorage.setItem('theme', nextMode);
