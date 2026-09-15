@@ -102,6 +102,16 @@ func (h *Handler) Popular(c echo.Context) error {
 	return c.JSON(http.StatusOK, u)
 }
 
+// MostWanted returns the most frequently unresolved queries
+func (h *Handler) MostWanted(c echo.Context) error {
+	limit := 10
+	queries, err := invalidQueryModel.GetMostWanted(limit)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, queries)
+}
+
 // GetURL finds an exact matching url if it exists
 func (h *Handler) GetURL(c echo.Context) error {
 	key := strings.ToLower(c.Param("key"))

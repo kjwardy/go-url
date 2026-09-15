@@ -8,6 +8,7 @@ import Tabs from '@material-ui/core/Tabs';
 import { useRouteMatch, useLocation } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
+import MostWanted from '../../components/MostWanted';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
 import useStyles from './useStyles';
@@ -96,6 +97,7 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
           >
             <Tab label="Most Popular" />
             <Tab label="History" />
+            <Tab label="Most Wanted" />
           </Tabs>
         </Paper>
         {activeTab === 0 && (popular || created.length > 0) && (
@@ -109,6 +111,11 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         {activeTab === 1 && (
           <div className={classes.container}>
             <History displayFlashError={displayFlashError} />
+          </div>
+        )}
+        {activeTab === 2 && (
+          <div className={classes.container}>
+            <MostWanted displayFlashError={displayFlashError} />
           </div>
         )}
       </main>

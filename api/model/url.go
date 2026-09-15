@@ -200,3 +200,10 @@ func (u *URL) GetMostPopular(limit int) ([]*URL, error) {
 	err := db.GetDB().Model(&urls).Order("views DESC").Limit(limit).Select()
 	return urls, err
 }
+
+// GetMostWanted gets the most frequently unresolved queries sorted by views
+func (u *InvalidQuery) GetMostWanted(limit int) ([]*InvalidQuery, error) {
+	queries := []*InvalidQuery{}
+	err := db.GetDB().Model(&queries).Order("views DESC").Limit(limit).Select()
+	return queries, err
+}
