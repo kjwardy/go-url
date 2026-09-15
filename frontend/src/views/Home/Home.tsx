@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { connect } from 'react-redux';
+import Paper from '@material-ui/core/Paper';
+import Tab from '@material-ui/core/Tab';
+import Tabs from '@material-ui/core/Tabs';
 import { useRouteMatch, useLocation } from 'react-router-dom';
+import History from '../../components/History';
+import Metrics from '../../components/Metrics';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
 import useStyles from './useStyles';
@@ -19,6 +24,7 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
   const [querySearchResults, setQuerySearchResults] = useState<any[]>();
   const [popular, setPopular] = useState<any[]>();
+  const [activeTab, setActiveTab] = useState(0);
   const classes = useStyles({});
   const match = useRouteMatch<{ query: string }>();
   const location = useLocation();
@@ -68,23 +74,45 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     : [];
 
   return (
-    <div>
-      {searchResults && (
-        <div className={classes.container}>
-          <Results
-            data={applyUpdates(addCreated(searchResults, createdSearchResults))}
-            title="Search Results"
-          />
-        </div>
-      )}
-      {(popular || created.length > 0) && (
-        <div className={classes.container}>
-          <Results
-            data={applyUpdates(addCreated(popular))}
-            title="Most Popular"
-          />
-        </div>
-      )}
+    <div className={classes.dashboard}>
+      <main className={classes.main}>
+        {searchResults && (
+          <div className={classes.container}>
+            <Results
+              data={applyUpdates(
+                addCreated(searchResults, createdSearchResults),
+              )}
+              title="Search Results"
+            />
+          </div>
+        )}
+        <Paper className={classes.tabs}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, value) => setActiveTab(value)}
+            indicatorColor="primary"
+            textColor="primary"
+            aria-label="URL data views"
+          >
+            <Tab label="Most Popular" />
+            <Tab label="History" />
+          </Tabs>
+        </Paper>
+        {activeTab === 0 && (popular || created.length > 0) && (
+          <div className={classes.container}>
+            <Results
+              data={applyUpdates(addCreated(popular))}
+              title="Most Popular"
+            />
+          </div>
+        )}
+        {activeTab === 1 && (
+          <div className={classes.container}>
+            <History displayFlashError={displayFlashError} />
+          </div>
+        )}
+      </main>
+      <Metrics displayFlashError={displayFlashError} />
     </div>
   );
 };

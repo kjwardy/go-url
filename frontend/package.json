@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/go",
   "author": "kjwardy",
   "scripts": {
     "start": "react-scripts start",

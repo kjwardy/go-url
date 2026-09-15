@@ -50,4 +50,44 @@ func createSchema() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	_, err = database.Exec(`
+		CREATE TABLE IF NOT EXISTS invalid_queries (
+			query text PRIMARY KEY,
+			views bigint NOT NULL DEFAULT 0
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = database.Exec(`
+		CREATE TABLE IF NOT EXISTS url_queries (
+			id bigserial PRIMARY KEY,
+			url_key text NOT NULL,
+			queried_at timestamptz NOT NULL DEFAULT now(),
+			successful boolean NOT NULL DEFAULT true
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = database.Exec(`
+		ALTER TABLE url_queries
+			ADD COLUMN IF NOT EXISTS successful boolean NOT NULL DEFAULT true;
+		ALTER TABLE url_queries
+			DROP CONSTRAINT IF EXISTS url_queries_url_key_fkey
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = database.Exec(`
+		CREATE INDEX IF NOT EXISTS url_queries_url_key_queried_at_idx
+		ON url_queries (url_key, queried_at)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

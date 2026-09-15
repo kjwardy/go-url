@@ -2,13 +2,17 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/labstack/echo"
 )
 
-const defaultLimit = 15
+const (
+	defaultLimit        = 15
+	defaultHistoryLimit = 25
+)
 
 // Search finds urls that are similar to the search query param q
 func (h *Handler) Search(c echo.Context) error {
@@ -48,6 +52,44 @@ func (h *Handler) Opensearch(c echo.Context) error {
 		"domain": appConfig.AppURI,
 	}
 	return c.Render(http.StatusOK, "opensearch.xml", data)
+}
+
+// History returns the most recent URL queries
+func (h *Handler) History(c echo.Context) error {
+	limit, valid := historyLimit(c.QueryParam("limit"))
+	if !valid {
+		return echo.NewHTTPError(http.StatusBadRequest, "limit must be 25, 50, or 100")
+	}
+	queries, err := urlQueryModel.GetRecent(limit)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, queries)
+}
+
+// Metrics returns aggregate URL query counts
+func (h *Handler) Metrics(c echo.Context) error {
+	metrics, err := urlQueryModel.GetMetrics()
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, metrics)
+}
+
+func historyLimit(value string) (int, bool) {
+	if value == "" {
+		return defaultHistoryLimit, true
+	}
+	limit, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, false
+	}
+	switch limit {
+	case 25, 50, 100:
+		return limit, true
+	default:
+		return 0, false
+	}
 }
 
 // Popular finds URLs with the most views

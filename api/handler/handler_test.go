@@ -25,6 +25,28 @@ func TestValidateKey(t *testing.T) {
 	}
 }
 
+func TestHistoryLimit(t *testing.T) {
+	tables := []struct {
+		value string
+		limit int
+		valid bool
+	}{
+		{"", 25, true},
+		{"25", 25, true},
+		{"50", 50, true},
+		{"100", 100, true},
+		{"10", 0, false},
+		{"invalid", 0, false},
+	}
+
+	for _, table := range tables {
+		limit, valid := historyLimit(table.value)
+		if limit != table.limit || valid != table.valid {
+			t.Errorf("Expected historyLimit(%q) to return (%d, %t), got (%d, %t)", table.value, table.limit, table.valid, limit, valid)
+		}
+	}
+}
+
 func TestValidateKeyPath(t *testing.T) {
 	tables := []struct {
 		key   string
