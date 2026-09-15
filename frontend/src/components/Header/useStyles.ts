@@ -13,8 +13,16 @@ const useStyles = makeStyles((theme: Theme) => ({
     textDecoration: 'none',
     padding: 10,
     color: theme.palette.primary.contrastText,
-    marginLeft: 30,
     fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  linkSecondary: {
+    marginLeft: 30,
+  },
+  logo: {
+    height: 32,
+    marginRight: 8,
   },
 }));
 

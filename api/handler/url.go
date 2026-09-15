@@ -24,7 +24,7 @@ func remove(s []string, r string) []string {
 func (h *Handler) getSetDifference(keys []string, found []*model.URL) []string {
 	var newKeys []string
 	for _, key := range keys {
-		newKeys = append(newKeys, strings.Split(key, "/")[0])
+		newKeys = append(newKeys, strings.ToLower(strings.Split(key, "/")[0]))
 	}
 	for _, item := range found {
 		newKeys = remove(newKeys, item.Key)
@@ -45,8 +45,9 @@ func (h *Handler) Url(c echo.Context) (err error) {
 	}
 
 	if len(keys) != len(u) {
+		missing := h.getSetDifference(keys, u)
+		go urlQueryModel.IncrementInvalidViewCount(missing)
 		if c.Request().Header.Get("Content-Type") != "application/json" {
-			missing := h.getSetDifference(keys, u)
 			message := fmt.Sprintf("/go/%s?message=%s was not found in the database", missing[0], strings.Join(missing, ", "))
 			return c.Redirect(http.StatusTemporaryRedirect, message)
 		}

@@ -57,6 +57,8 @@ func Init(e *echo.Echo) {
 	e.GET("/api/search", h.Search)
 	e.GET("/api/search/suggest", h.SearchSuggestions)
 	e.GET("/api/popular", h.Popular)
+	e.GET("/api/history", h.History)
+	e.GET("/api/metrics", h.Metrics)
 	e.GET("/api/url/:key", h.GetURL)
 
 	if appConfig.Slack.SigningSecret != "" {

@@ -20,9 +20,24 @@ type URL struct {
 
 // URLQuery records when a URL key is queried
 type URLQuery struct {
-	ID        int64     `json:"id" sql:",pk"`
-	URLKey    string    `json:"url_key"`
-	QueriedAt time.Time `json:"queried_at"`
+	ID         int64     `json:"id" sql:",pk"`
+	URLKey     string    `json:"url_key"`
+	QueriedAt  time.Time `json:"queried_at"`
+	Successful bool      `json:"successful" sql:",notnull"`
+}
+
+// InvalidQuery tracks aggregate views for unresolved queries
+type InvalidQuery struct {
+	Query string `json:"query" sql:",pk"`
+	Views int    `json:"views" sql:"default:0"`
+}
+
+// URLQueryMetrics contains aggregate URL query counts
+type URLQueryMetrics struct {
+	TotalAllTime  int64 `json:"total_all_time"`
+	TotalToday    int64 `json:"total_today"`
+	FailedAllTime int64 `json:"failed_all_time"`
+	FailedToday   int64 `json:"failed_today"`
 }
 
 // Find returns matching URL
@@ -60,7 +75,7 @@ func (u *URL) Delete() error {
 
 // IncrementViewCount increments view counts and records timestamped queries
 func (u *URL) IncrementViewCount(keys []string) error {
-	queries := newURLQueries(keys, time.Now().UTC())
+	queries := newURLQueries(keys, time.Now().UTC(), true)
 	queryKeys := make([]string, len(queries))
 	for i, query := range queries {
 		queryKeys[i] = query.URLKey
@@ -79,7 +94,54 @@ func (u *URL) IncrementViewCount(keys []string) error {
 	return err
 }
 
-func newURLQueries(keys []string, queriedAt time.Time) []URLQuery {
+// GetRecent returns the most recent URL queries
+func (u *URLQuery) GetRecent(limit int) ([]*URLQuery, error) {
+	queries := []*URLQuery{}
+	err := db.GetDB().Model(&queries).Order("queried_at DESC").Limit(limit).Select()
+	return queries, err
+}
+
+// GetMetrics returns aggregate URL query counts
+func (u *URLQuery) GetMetrics() (*URLQueryMetrics, error) {
+	metrics := new(URLQueryMetrics)
+	_, err := db.GetDB().QueryOne(metrics, `
+		SELECT
+			COUNT(*) AS total_all_time,
+			COUNT(*) FILTER (WHERE queried_at >= date_trunc('day', CURRENT_TIMESTAMP)) AS total_today,
+			COUNT(*) FILTER (WHERE NOT successful) AS failed_all_time,
+			COUNT(*) FILTER (
+				WHERE NOT successful
+				AND queried_at >= date_trunc('day', CURRENT_TIMESTAMP)
+			) AS failed_today
+		FROM url_queries
+	`)
+	return metrics, err
+}
+
+// IncrementInvalidViewCount tracks unresolved queries and records their history
+func (u *URLQuery) IncrementInvalidViewCount(keys []string) error {
+	queries := newURLQueries(keys, time.Now().UTC(), false)
+	err := db.GetDB().RunInTransaction(func(tx *pg.Tx) error {
+		for _, query := range queries {
+			_, err := tx.Exec(`
+				INSERT INTO invalid_queries (query, views) VALUES (?, 1)
+				ON CONFLICT (query) DO UPDATE
+				SET views = invalid_queries.views + 1
+			`, query.URLKey)
+			if err != nil {
+				return err
+			}
+		}
+		return tx.Insert(&queries)
+	})
+	if err != nil {
+		log.Error("Error while recording invalid URL queries")
+		log.Error(err)
+	}
+	return err
+}
+
+func newURLQueries(keys []string, queriedAt time.Time, successful bool) []URLQuery {
 	queries := make([]URLQuery, 0, len(keys))
 	seen := make(map[string]bool)
 	for _, key := range keys {
@@ -88,7 +150,7 @@ func newURLQueries(keys []string, queriedAt time.Time) []URLQuery {
 			continue
 		}
 		seen[key] = true
-		queries = append(queries, URLQuery{URLKey: key, QueriedAt: queriedAt})
+		queries = append(queries, URLQuery{URLKey: key, QueriedAt: queriedAt, Successful: successful})
 	}
 	return queries
 }
