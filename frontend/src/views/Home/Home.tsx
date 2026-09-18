@@ -8,6 +8,7 @@ import Tabs from '@material-ui/core/Tabs';
 import { useRouteMatch, useLocation } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
+import MostWanted from '../../components/MostWanted';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
 import useStyles from './useStyles';
@@ -68,6 +69,8 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         ? { ...result, ...updatedUrl, views: result.views }
         : result;
     });
+  const sortByViews = (results: any[]) =>
+    [...results].sort((first, second) => second.views - first.views);
   const searchResults = search.results || querySearchResults;
   const createdSearchResults = match.params.query
     ? created.filter((result) => result.key.includes(match.params.query))
@@ -96,12 +99,13 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
           >
             <Tab label="Most Popular" />
             <Tab label="History" />
+            <Tab label="Most Wanted" />
           </Tabs>
         </Paper>
         {activeTab === 0 && (popular || created.length > 0) && (
           <div className={classes.container}>
             <Results
-              data={applyUpdates(addCreated(popular))}
+              data={sortByViews(applyUpdates(addCreated(popular)))}
               title="Most Popular"
             />
           </div>
@@ -109,6 +113,11 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         {activeTab === 1 && (
           <div className={classes.container}>
             <History displayFlashError={displayFlashError} />
+          </div>
+        )}
+        {activeTab === 2 && (
+          <div className={classes.container}>
+            <MostWanted displayFlashError={displayFlashError} />
           </div>
         )}
       </main>

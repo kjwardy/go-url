@@ -30,7 +30,11 @@ const Header: React.FC<HeaderProps> = ({ onSearch, mode, onToggleMode }) => {
     <AppBar position="static">
       <Toolbar>
         <a className={classes.link} href="/go">
-          <img src={process.env.PUBLIC_URL + '/logo.svg'} alt="Go URL Logo" className={classes.logo} />
+          <img
+            src={process.env.PUBLIC_URL + '/logo.svg'}
+            alt="Go URL Logo"
+            className={classes.logo}
+          />
           <Typography variant="h6" color="inherit">
             Go
           </Typography>

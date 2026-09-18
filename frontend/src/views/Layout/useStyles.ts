@@ -6,11 +6,15 @@ const useStyles = makeStyles((theme: Theme) => ({
     minHeight: '100vh',
     color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.default,
+    backgroundImage:
+      theme.palette.type === 'light'
+        ? 'radial-gradient(circle at 85% 0%, rgba(64, 84, 178, 0.08), transparent 28%)'
+        : 'radial-gradient(circle at 85% 0%, rgba(142, 162, 255, 0.08), transparent 28%)',
   },
   button: {
     position: 'fixed',
-    right: 23,
-    bottom: 23,
+    right: theme.spacing(3),
+    bottom: theme.spacing(3),
   },
 }));
 

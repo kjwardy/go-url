@@ -34,10 +34,21 @@ type InvalidQuery struct {
 
 // URLQueryMetrics contains aggregate URL query counts
 type URLQueryMetrics struct {
-	TotalAllTime  int64 `json:"total_all_time"`
-	TotalToday    int64 `json:"total_today"`
-	FailedAllTime int64 `json:"failed_all_time"`
-	FailedToday   int64 `json:"failed_today"`
+	TotalAllTime                   int64                   `json:"total_all_time"`
+	FailedAllTime                  int64                   `json:"failed_all_time"`
+	SuccessPercentage              float64                 `json:"success_percentage"`
+	TotalLastSevenDays             int64                   `json:"total_last_seven_days"`
+	FailedLastSevenDays            int64                   `json:"failed_last_seven_days"`
+	SuccessPercentageLastSevenDays float64                 `json:"success_percentage_last_seven_days"`
+	DailyQueries                   []*DailyURLQueryMetrics `json:"daily_queries"`
+}
+
+// DailyURLQueryMetrics contains query counts for one calendar day
+type DailyURLQueryMetrics struct {
+	Date       string `json:"date"`
+	Successful int64  `json:"successful"`
+	Failed     int64  `json:"failed"`
+	Total      int64  `json:"total"`
 }
 
 // Find returns matching URL
@@ -63,8 +74,13 @@ func (u *URL) Update() error {
 
 // Save adds a new url to the db
 func (u *URL) Save() error {
-	err := db.GetDB().Insert(u)
-	return err
+	return db.GetDB().RunInTransaction(func(tx *pg.Tx) error {
+		if err := tx.Insert(u); err != nil {
+			return err
+		}
+		_, err := tx.Model(&InvalidQuery{}).Where("query = ?", u.Key).Delete()
+		return err
+	})
 }
 
 // Delete removes a url from the db
@@ -107,13 +123,54 @@ func (u *URLQuery) GetMetrics() (*URLQueryMetrics, error) {
 	_, err := db.GetDB().QueryOne(metrics, `
 		SELECT
 			COUNT(*) AS total_all_time,
-			COUNT(*) FILTER (WHERE queried_at >= date_trunc('day', CURRENT_TIMESTAMP)) AS total_today,
 			COUNT(*) FILTER (WHERE NOT successful) AS failed_all_time,
+			COALESCE(
+				ROUND(100.0 * COUNT(*) FILTER (WHERE successful) / NULLIF(COUNT(*), 0), 1),
+				0
+			) AS success_percentage,
+			COUNT(*) FILTER (
+				WHERE queried_at >= DATE_TRUNC('day', CURRENT_TIMESTAMP) - INTERVAL '6 days'
+			) AS total_last_seven_days,
 			COUNT(*) FILTER (
 				WHERE NOT successful
-				AND queried_at >= date_trunc('day', CURRENT_TIMESTAMP)
-			) AS failed_today
+				AND queried_at >= DATE_TRUNC('day', CURRENT_TIMESTAMP) - INTERVAL '6 days'
+			) AS failed_last_seven_days,
+			COALESCE(
+				ROUND(
+					100.0 * COUNT(*) FILTER (
+						WHERE successful
+						AND queried_at >= DATE_TRUNC('day', CURRENT_TIMESTAMP) - INTERVAL '6 days'
+					) / NULLIF(
+						COUNT(*) FILTER (
+							WHERE queried_at >= DATE_TRUNC('day', CURRENT_TIMESTAMP) - INTERVAL '6 days'
+						),
+						0
+					),
+					1
+				),
+				0
+			) AS success_percentage_last_seven_days
 		FROM url_queries
+	`)
+	if err != nil {
+		return metrics, err
+	}
+	_, err = db.GetDB().Query(&metrics.DailyQueries, `
+		SELECT
+			TO_CHAR(days.day, 'YYYY-MM-DD') AS date,
+			COUNT(q.id) FILTER (WHERE q.successful) AS successful,
+			COUNT(q.id) FILTER (WHERE NOT q.successful) AS failed,
+			COUNT(q.id) AS total
+		FROM GENERATE_SERIES(
+			DATE_TRUNC('day', CURRENT_TIMESTAMP) - INTERVAL '6 days',
+			DATE_TRUNC('day', CURRENT_TIMESTAMP),
+			INTERVAL '1 day'
+		) AS days(day)
+		LEFT JOIN url_queries AS q
+			ON q.queried_at >= days.day
+			AND q.queried_at < days.day + INTERVAL '1 day'
+		GROUP BY days.day
+		ORDER BY days.day
 	`)
 	return metrics, err
 }
@@ -199,4 +256,19 @@ func (u *URL) GetMostPopular(limit int) ([]*URL, error) {
 	urls := []*URL{}
 	err := db.GetDB().Model(&urls).Order("views DESC").Limit(limit).Select()
 	return urls, err
+}
+
+// GetMostWanted gets the most frequently unresolved queries sorted by views
+func (u *InvalidQuery) GetMostWanted(limit int) ([]*InvalidQuery, error) {
+	queries := []*InvalidQuery{}
+	_, err := db.GetDB().Query(&queries, `
+		SELECT invalid.query, invalid.views
+		FROM invalid_queries AS invalid
+		WHERE NOT EXISTS (
+			SELECT 1 FROM urls WHERE urls.key = invalid.query
+		)
+		ORDER BY invalid.views DESC, invalid.query
+		LIMIT ?
+	`, limit)
+	return queries, err
 }

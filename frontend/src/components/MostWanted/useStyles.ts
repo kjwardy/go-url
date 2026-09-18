@@ -7,24 +7,15 @@ const useStyles = makeStyles((theme: Theme) => ({
     overflowX: 'auto',
     border: `1px solid ${theme.palette.divider}`,
     boxShadow: '0 10px 35px rgba(20, 29, 60, 0.08)',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(2),
     '& h3': {
-      margin: 0,
+      margin: theme.spacing(0, 0, 2),
       fontSize: '1.15rem',
       fontWeight: 600,
     },
   },
-  successful: {
-    color: theme.palette.success.main,
-  },
-  unsuccessful: {
-    color: theme.palette.error.main,
+  editButton: {
+    borderRadius: 8,
+    color: theme.palette.primary.main,
   },
 }));
 
