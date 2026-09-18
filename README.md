@@ -6,14 +6,17 @@ A simple URL shortener written in Go with a React frontend and Postgres database
 
 # Features
 
-- Shorten urls based on a user defined key
-- Alias a key to point to another short url
+- Shorten URLs using user-defined keys, including keys containing spaces
+- Alias a key to another short URL or to multiple keys
 - Open multiple pages at once by separating keys with a comma
-- Alias a key to point to multiple other keys
 - Use variables in URLs
-- Opensearch integration to provide suggestions directly to browser
-- Frontend to view most popular searches and search to find existing links
-- Frontend to allow anyone to add and edit links
+- Add, edit, and delete links from the frontend with immediate UI updates
+- Search for existing links and view the most popular URLs
+- Track timestamped query history, including successful and unresolved requests
+- Review the most frequently requested unresolved URLs and create links for them
+- View all-time and seven-day query metrics with success rates and a daily histogram
+- Persistent light and dark modes
+- OpenSearch integration providing suggestions directly in the browser
 - Optional authentication using Azure AD or Okta
 - Slack `/` command integration
 - Slackbot integration
@@ -40,39 +43,6 @@ Alteratively use the docker-compose file and run:
 
 ```sh
 docker-compose up
-```
-
-## Development
-
-Open http://localhost:8080/go
-
-Run Postgres manually or with Docker
-
-```sh
-docker-compose up postgres
-```
-
-Install node (via nvm), yarn & go
-
-```sh
-brew install nvm yarn go
-nvm install
-```
-
-### Start frontend
-
-```sh
-cd frontend
-yarn
-yarn start
-```
-
-### Start API
-
-```sh
-cd api
-go mod download
-POSTGRES_PASS=password HOSTS=localhost APP_URI=http://localhost:3000 go run server.go
 ```
 
 ## Enviroment Configuration
@@ -107,9 +77,3 @@ POSTGRES_PASS=password HOSTS=localhost APP_URI=http://localhost:3000 go run serv
 | `ALLOWED_IPS`               |          |                | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that are always allowed access, even with auth enabled                           |
 | `ALLOW_FORWARDED_FOR`       |          | false          |                                                | Retrieve origin IP from X-Forwarded-For header. Only enable if source is trusted, e.g. via Cloudfront  |
 | `FORWARDED_FOR_TRUST_LEVEL` |          | 1              |                                                | Number of levels to trust X-Forwarded-For header - should map to number of proxies used                |
-
-## FAQ
-
-#### Slackbot is posting multiple replies messages to a single message
-
-When enabled, the Slackbot will be running on every node in a load balanced system. Either disable load balancing, or run a separate instance just for the Slackbot.
