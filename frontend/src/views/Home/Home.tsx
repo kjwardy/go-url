@@ -69,6 +69,8 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         ? { ...result, ...updatedUrl, views: result.views }
         : result;
     });
+  const sortByViews = (results: any[]) =>
+    [...results].sort((first, second) => second.views - first.views);
   const searchResults = search.results || querySearchResults;
   const createdSearchResults = match.params.query
     ? created.filter((result) => result.key.includes(match.params.query))
@@ -103,7 +105,7 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         {activeTab === 0 && (popular || created.length > 0) && (
           <div className={classes.container}>
             <Results
-              data={applyUpdates(addCreated(popular))}
+              data={sortByViews(applyUpdates(addCreated(popular)))}
               title="Most Popular"
             />
           </div>

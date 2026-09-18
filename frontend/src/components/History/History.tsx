@@ -64,7 +64,7 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
         </FormControl>
       </div>
       {history && history.length === 0 ? (
-        <p>No query history found.</p>
+        <p>No query history found - go nuts!</p>
       ) : (
         <Table size="small">
           <TableHead>

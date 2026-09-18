@@ -6,23 +6,32 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexGrow: 1,
   },
   name: {
-    marginLeft: 20,
+    marginLeft: theme.spacing(2),
+    padding: theme.spacing(0.75, 1.25),
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     fontWeight: 500,
   },
   link: {
-    textDecoration: 'none',
-    padding: 10,
-    color: theme.palette.primary.contrastText,
-    fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
+    padding: theme.spacing(1),
+    color: theme.palette.common.white,
+    textDecoration: 'none',
+    fontWeight: 600,
+    borderRadius: theme.shape.borderRadius,
+    transition: theme.transitions.create('background-color'),
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    },
   },
   linkSecondary: {
-    marginLeft: 30,
+    marginLeft: theme.spacing(2),
   },
   logo: {
-    height: 32,
-    marginRight: 8,
+    height: 34,
+    marginRight: theme.spacing(1),
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18))',
   },
 }));
 
