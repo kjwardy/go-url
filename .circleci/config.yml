@@ -4,11 +4,14 @@ executors:
   default:
     working_directory: /home/circleci/project
     environment:
+      # Required by the Dockerfile's build cache mounts.
       DOCKER_BUILDKIT: "1"
     docker:
+      # Provides the Go and Node.js toolchains used by validation jobs.
       - image: cimg/go:1.24.1-node
 
 jobs:
+  # Install dependencies once and share the prepared repository with later jobs.
   setup:
     executor: default
     steps:
@@ -33,6 +36,7 @@ jobs:
           paths:
             - .
 
+  # Verify frontend formatting and lint rules before publishing an image.
   lint:
     executor: default
     steps:
@@ -46,6 +50,7 @@ jobs:
           command: |
             cd frontend && yarn lint && echo -e "\033[0;32mESLint passed"
 
+  # Run the Go API test suite independently from frontend validation.
   unit-test:
     executor: default
     steps:
@@ -56,6 +61,7 @@ jobs:
           command: |
             cd api && go test ./...
 
+  # Build and publish versioned and latest images after validation succeeds.
   build:
     executor: default
     steps:
@@ -65,30 +71,56 @@ jobs:
           version: docker24
       - run:
           name: Build Docker image
+          # Docker tags cannot contain slashes or colons.
           command: |
+            IMAGE_TAG=$(printf '%s' "$CIRCLE_TAG" | tr '/:' '--')
             docker build \
-              --build-arg VERSION="${CIRCLE_TAG:-$CIRCLE_BRANCH}" \
+              --build-arg VERSION="$CIRCLE_TAG" \
               --build-arg REVISION="$CIRCLE_SHA1" \
-              -t kjwardy/go-url .
+              -t "kjwardy/go-url:$IMAGE_TAG" \
+              -t kjwardy/go-url:latest .
       - run:
           name: Push Docker image
+          # Credentials are supplied through protected CircleCI environment variables.
           command: |
-            if [ "$CIRCLE_BRANCH" == "master" ]; then
-              echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_LOGIN" --password-stdin
-              docker push kjwardy/go-url
-            fi
+            IMAGE_TAG=$(printf '%s' "$CIRCLE_TAG" | tr '/:' '--')
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_LOGIN" --password-stdin
+            docker push "kjwardy/go-url:$IMAGE_TAG"
+            docker push kjwardy/go-url:latest
 
 workflows:
   version: 2
+  # Releases run only for Git tags; ordinary branch pushes are ignored.
   main-workflow:
     jobs:
-      - setup
+      - setup:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
       - lint:
           requires:
             - setup
-      - build:
-          requires:
-            - setup
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
       - unit-test:
           requires:
             - setup
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
+      - build:
+          requires:
+            - lint
+            - unit-test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
