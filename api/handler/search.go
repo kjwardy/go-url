@@ -69,10 +69,15 @@ func (h *Handler) History(c echo.Context) error {
 
 // Metrics returns aggregate URL query counts
 func (h *Handler) Metrics(c echo.Context) error {
-	metrics, err := urlQueryModel.GetMetrics()
+	timezone := c.QueryParam("timezone")
+	if timezone == "" {
+		timezone = "UTC"
+	}
+	metrics, err := urlQueryModel.GetMetrics(timezone)
 	if err != nil {
 		return err
 	}
+	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.JSON(http.StatusOK, metrics)
 }
 

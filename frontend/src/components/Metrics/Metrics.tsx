@@ -34,8 +34,9 @@ const Metrics: React.FC<MetricsProps> = ({ displayFlashError }) => {
   const classes = useStyles({});
 
   useEffect(() => {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     axios
-      .get<QueryMetrics>('/api/metrics')
+      .get<QueryMetrics>('/api/metrics', { params: { timezone } })
       .then(({ data }) => setMetrics(data))
       .catch((err) =>
         displayFlashError(err.response.data.message || err.response.data),

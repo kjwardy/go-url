@@ -98,8 +98,8 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
             aria-label="URL data views"
           >
             <Tab label="Most Popular" />
-            <Tab label="History" />
             <Tab label="Most Wanted" />
+            <Tab label="History" />
           </Tabs>
         </Paper>
         {activeTab === 0 && (popular || created.length > 0) && (
@@ -112,12 +112,12 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
         )}
         {activeTab === 1 && (
           <div className={classes.container}>
-            <History displayFlashError={displayFlashError} />
+            <MostWanted displayFlashError={displayFlashError} />
           </div>
         )}
         {activeTab === 2 && (
           <div className={classes.container}>
-            <MostWanted displayFlashError={displayFlashError} />
+            <History displayFlashError={displayFlashError} />
           </div>
         )}
       </main>
