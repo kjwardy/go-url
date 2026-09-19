@@ -1,13 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/getsentry/sentry-go"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/kjwardy/go-url/api/app"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/db"
-	"github.com/getsentry/sentry-go"
-	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
@@ -43,5 +49,19 @@ func main() {
 	db.Init()
 	app.Init(e)
 	// Start server
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", appConfig.Port)))
+	go func() {
+		if err := e.Start(fmt.Sprintf(":%d", appConfig.Port)); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal(err)
+		}
+	}()
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+	<-shutdown
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Error(err)
+	}
 }

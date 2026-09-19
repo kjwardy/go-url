@@ -2,9 +2,11 @@ version: 2.1
 
 executors:
   default:
-    working_directory: /go/src/github.com/kjwardy/go-url
+    working_directory: /home/circleci/project
+    environment:
+      DOCKER_BUILDKIT: "1"
     docker:
-      - image: circleci/golang:1.15-node
+      - image: cimg/go:1.24.1-node
 
 jobs:
   setup:
@@ -17,25 +19,25 @@ jobs:
             - yarn-packages-v1-{{ checksum "frontend/yarn.lock" }}
       - run:
           name: Install Frontend Dependencies
-          command: cd /go/src/github.com/kjwardy/go-url/frontend && yarn install --frozen-lockfile
+          command: cd frontend && yarn install --frozen-lockfile
       - run:
           name: Install API Dependencies
-          command: cd /go/src/github.com/kjwardy/go-url/api && go mod download
+          command: cd api && go mod download
       - save_cache:
           name: Save Yarn Package Cache
           key: yarn-packages-v1-{{ checksum "frontend/yarn.lock" }}
           paths:
             - ~/.cache
       - persist_to_workspace:
-          root: /go/src/github.com/kjwardy
+          root: /home/circleci/project
           paths:
-            - ./go-url
+            - .
 
   lint:
     executor: default
     steps:
       - attach_workspace:
-          at: /go/src/github.com/kjwardy
+          at: /home/circleci/project
       - run:
           name: Prettier Frontend
           command: cd frontend && yarn prettier:check && echo -e "\033[0;32mPrettier passed"
@@ -48,7 +50,7 @@ jobs:
     executor: default
     steps:
       - attach_workspace:
-          at: /go/src/github.com/kjwardy
+          at: /home/circleci/project
       - run:
           name: Run unit tests
           command: |
@@ -58,13 +60,16 @@ jobs:
     executor: default
     steps:
       - attach_workspace:
-          at: /go/src/github.com/kjwardy
+          at: /home/circleci/project
       - setup_remote_docker:
           version: docker24
       - run:
           name: Build Docker image
           command: |
-            docker build -t kjwardy/go-url .
+            docker build \
+              --build-arg VERSION="${CIRCLE_TAG:-$CIRCLE_BRANCH}" \
+              --build-arg REVISION="$CIRCLE_SHA1" \
+              -t kjwardy/go-url .
       - run:
           name: Push Docker image
           command: |

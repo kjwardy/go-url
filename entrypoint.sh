@@ -1,25 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/sh
+set -eu
 
-# Inject env before starting server
+escape_javascript_string() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
 
-vars=(
-  "SENTRY_FRONTEND_DSN" 
-)
-targetPath="public/index.html"
+sentry_frontend_dsn=$(escape_javascript_string "${SENTRY_FRONTEND_DSN:-}")
+printf 'window.appConfig = {"SENTRY_FRONTEND_DSN":"%s"};\n' "$sentry_frontend_dsn" > public/config.js
 
-script="<script>window.appConfig={"
-
-for var in "${vars[@]}"
-do
-  script="$script\"$var\":\"$(printenv $var)\","
-done
-
-script="$script}</script>"
-
-find="<script src=\"\/config.js\"><\/script>"
-# escape special chars from script
-replace=$(echo $script | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')
-# Replace config.js import with inline variable in index.html
-sed -ie "s/$find/$replace/" $targetPath
-
-/go/bin/server
+exec /go/bin/server
