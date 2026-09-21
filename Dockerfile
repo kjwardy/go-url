@@ -39,6 +39,7 @@ FROM alpine:3.21.3
 
 ARG VERSION=dev
 ARG REVISION=unknown
+ENV SERVICE_VERSION="${VERSION}"
 LABEL org.opencontainers.image.title="go-url" \
       org.opencontainers.image.description="A Go URL shortener with a React frontend" \
       org.opencontainers.image.source="https://github.com/kjwardy/go-url" \
