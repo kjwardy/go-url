@@ -10,14 +10,15 @@ import (
 
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/handler"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/slackbot"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
 
 // Init sets up all and creates routes
-func Init(e *echo.Echo) {
-	h := &handler.Handler{}
+func Init(e *echo.Echo, logger *logging.Logger) {
+	h := &handler.Handler{Logger: logger}
 
 	appConfig := config.GetConfig()
 	if appConfig.Auth.Enabled {

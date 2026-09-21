@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Optional ECS-shaped JSON logging for API requests and URL query outcomes
+- Validated request correlation IDs returned through `X-Request-ID`
+- Service version and environment metadata for structured logs
+- ECS version and event outcome fields to all structured logs
+
 ## [1.0.0] - 2026-09-19
 
 ### Added

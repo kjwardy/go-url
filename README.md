@@ -36,7 +36,7 @@ docker run -d -P --name db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e PO
 **Start App**
 
 ```sh
-docker run -p 1323:1323 -e HOSTS=localhost -e APP_URI=http://localhost:1323 --link db kjwardy/go-url
+docker run -p 1323:1323 -e HOSTS=localhost -e APP_URI=http://localhost:1323 -e JSON_LOGS=true --link db kjwardy/go-url
 ```
 
 Alteratively use the docker-compose file and run:
@@ -54,7 +54,9 @@ docker-compose up
 | `APP_URI`                   | yes      |                | https://go.domain.com                          | Default URI of app - used to link back to app                                                          |
 | `PORT`                      |          | 1323           |                                                | Port the app will run on                                                                               |
 | `DEBUG`                     |          | false          |                                                | Enable more logging                                                                                    |
-| `JSON_LOGS`                 |          | false          |                                                | Use JSON logs where possible                                                                           |
+| `JSON_LOGS`                 |          | false          |                                                | Emit ECS-shaped API request and URL query logs as JSON to stdout                                        |
+| `SERVICE_VERSION`           |          | image version  | v1.1.0                                         | Application version included in structured logs                                                        |
+| `SERVICE_ENVIRONMENT`       |          |                | production                                     | Deployment environment included in structured logs                                                     |
 | `POSTGRES_ADDR`             |          | localhost:5432 |                                                | Postgres db address                                                                                    |
 | `POSTGRES_DATABASE`         |          | go             |                                                | Postgres db name                                                                                       |
 | `POSTGRES_USER`             |          | postgres       |                                                | Postgres user                                                                                          |
@@ -77,3 +79,5 @@ docker-compose up
 | `ALLOWED_IPS`               |          |                | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that are always allowed access, even with auth enabled                           |
 | `ALLOW_FORWARDED_FOR`       |          | false          |                                                | Retrieve origin IP from X-Forwarded-For header. Only enable if source is trusted, e.g. via Cloudfront  |
 | `FORWARDED_FOR_TRUST_LEVEL` |          | 1              |                                                | Number of levels to trust X-Forwarded-For header - should map to number of proxies used                |
+
+See the [API logging schema](docs/monitoring/LOGGING_SCHEMA.md) for event fields, ECS and OpenTelemetry mappings, correlation behavior, and excluded sensitive data.

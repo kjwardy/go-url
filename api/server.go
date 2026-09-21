@@ -14,6 +14,7 @@ import (
 	"github.com/kjwardy/go-url/api/app"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/db"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
@@ -32,13 +33,12 @@ func main() {
 	}
 
 	e.Pre(middleware.RemoveTrailingSlash())
-	logFormat := "${time_rfc3339}\t|${status}|\t${latency_human}| ${remote_ip} | ${method} | ${path} ${error}\n"
-	if appConfig.JSONLogs {
-		logFormat = ""
-	}
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: logFormat,
-	}))
+	logger := logging.New(logging.Config{
+		JSON:               appConfig.JSONLogs,
+		ServiceVersion:     appConfig.ServiceVersion,
+		ServiceEnvironment: appConfig.ServiceEnvironment,
+	})
+	e.Use(logger.Middleware())
 	e.Use(middleware.Recover())
 
 	// TODO after updating to echo v4
@@ -47,7 +47,7 @@ func main() {
 	e.Debug = appConfig.Debug
 
 	db.Init()
-	app.Init(e)
+	app.Init(e, logger)
 	// Start server
 	go func() {
 		if err := e.Start(fmt.Sprintf(":%d", appConfig.Port)); err != nil && err != http.ErrServerClosed {

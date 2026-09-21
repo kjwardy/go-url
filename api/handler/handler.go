@@ -3,11 +3,14 @@ package handler
 import (
 	"regexp"
 
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/model"
 )
 
 // Handler ...
-type Handler struct{}
+type Handler struct {
+	Logger *logging.Logger
+}
 
 var (
 	urlModel              = &model.URL{}

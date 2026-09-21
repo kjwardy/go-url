@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/model"
 	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
@@ -32,6 +33,27 @@ func (h *Handler) getSetDifference(keys []string, found []*model.URL) []string {
 	return newKeys
 }
 
+func (h *Handler) logQueryOutcomes(c echo.Context, keys []string, found []*model.URL) {
+	if h.Logger == nil {
+		return
+	}
+	// Build a set of resolved keys for fast lookup
+	resolved := make(map[string]bool, len(found))
+	for _, item := range found {
+		resolved[item.Key] = true
+	}
+	// Emit one event per distinct normalized requested key
+	logged := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		normalized := strings.ToLower(strings.Split(key, "/")[0])
+		if normalized == "" || logged[normalized] {
+			continue
+		}
+		logged[normalized] = true
+		h.Logger.Query(logging.RequestID(c), normalized, resolved[normalized])
+	}
+}
+
 // Url is the handler function for finding a url
 // It will redirect the user to the desired url if one exists
 func (h *Handler) Url(c echo.Context) (err error) {
@@ -43,6 +65,8 @@ func (h *Handler) Url(c echo.Context) (err error) {
 	if err != nil {
 		return err
 	}
+
+	h.logQueryOutcomes(c, keys, u)
 
 	if len(keys) != len(u) {
 		missing := h.getSetDifference(keys, u)
@@ -107,7 +131,7 @@ func (h *Handler) isAlias(alias string) (bool, error) {
 		return false, err
 	}
 	if len(keys) != len(u) {
-		message := fmt.Sprintf("One or more of the urls or aliases provided are invalid")
+		message := "One or more of the urls or aliases provided are invalid"
 		return false, echo.NewHTTPError(http.StatusBadRequest, message)
 	}
 
@@ -123,7 +147,7 @@ func (h *Handler) isAlias(alias string) (bool, error) {
 func (h *Handler) validateUrl(c echo.Context) (*model.URL, error) {
 	key := strings.ToLower(c.Param("key"))
 	if valid := ValidateKey(key); !valid {
-		message := fmt.Sprint("The key provided is not valid. It can only contain letters, numbers, spaces, _ and -")
+		message := "The key provided is not valid. It can only contain letters, numbers, spaces, _ and -"
 		return nil, echo.NewHTTPError(http.StatusBadRequest, message)
 	}
 	u := &model.URL{

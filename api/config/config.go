@@ -32,6 +32,8 @@ type Specification struct {
 	AllowForwardedFor      bool     `envconfig:"ALLOW_FORWARDED_FOR"`
 	ForwardedForTrustLevel int      `envconfig:"FORWARDED_FOR_TRUST_LEVEL" default:"1"`
 	SentryDSN              string   `envconfig:"SENTRY_API_DSN"`
+	ServiceVersion         string   `envconfig:"SERVICE_VERSION"`
+	ServiceEnvironment     string   `envconfig:"SERVICE_ENVIRONMENT"`
 	OktaClientID           string   `envconfig:"OKTA_CLIENT_ID"`
 	OktaClientSecret       string   `envconfig:"OKTA_CLIENT_SECRET"`
 	OktaIssuer             string   `envconfig:"OKTA_ISSUER"`
@@ -71,15 +73,17 @@ type Slack struct {
 
 // Config definition
 type Config struct {
-	Debug        bool
-	JSONLogs     bool
-	Port         int
-	Auth         Auth
-	Database     Database
-	AppURI       string
-	BlockedHosts []string
-	Slack        Slack
-	SentryDSN    string
+	Debug              bool
+	JSONLogs           bool
+	Port               int
+	Auth               Auth
+	Database           Database
+	AppURI             string
+	BlockedHosts       []string
+	Slack              Slack
+	SentryDSN          string
+	ServiceVersion     string
+	ServiceEnvironment string
 }
 
 func validateConfig(c Config) {
@@ -131,6 +135,8 @@ func Init() {
 	}
 
 	config.SentryDSN = spec.SentryDSN
+	config.ServiceVersion = spec.ServiceVersion
+	config.ServiceEnvironment = spec.ServiceEnvironment
 
 	config.BlockedHosts = append(spec.BlockedHosts, spec.Hosts...)
 
