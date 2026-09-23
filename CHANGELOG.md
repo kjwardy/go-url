@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Service version and environment metadata for structured logs
 - ECS version and event outcome fields to all structured logs
 - Timestamp index for query history and metrics lookups
+- Generic OIDC authentication with discovery, PKCE, validated ID tokens, and provider logout
+- Shared authenticated sessions, frontend user identity, and logout for all authentication providers
+
+### Changed
+
+- Authentication providers are selected explicitly with `AUTH_PROVIDER` and conflicting configuration is rejected at startup
+- Azure AD and Okta now use provider-neutral session identity and per-login state
 
 ## [1.0.0] - 2026-09-19
 

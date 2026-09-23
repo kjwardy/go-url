@@ -7,6 +7,7 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Brightness4Icon from '@material-ui/icons/Brightness4';
 import Brightness7Icon from '@material-ui/icons/Brightness7';
+import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import Search from '../Search';
 import useStyles from './useStyles';
 
@@ -57,7 +58,18 @@ const Header: React.FC<HeaderProps> = ({ onSearch, mode, onToggleMode }) => {
           </IconButton>
         </Tooltip>
 
-        {name && <span className={classes.name}>{name}</span>}
+        {name && (
+          <>
+            <span className={classes.name}>{name}</span>
+            <form method="post" action="/logout" className={classes.logout}>
+              <Tooltip title="Log out">
+                <IconButton color="inherit" aria-label="Log out" type="submit">
+                  <ExitToAppIcon />
+                </IconButton>
+              </Tooltip>
+            </form>
+          </>
+        )}
       </Toolbar>
     </AppBar>
   );

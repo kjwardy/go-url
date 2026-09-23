@@ -75,7 +75,7 @@ func verifySlackTeam(payload *SlackPayload) error {
 	teamID := appConfig.Slack.TeamID
 	if teamID != "" && teamID != payload.TeamID {
 		err := fmt.Sprintf("TeamID: %s does not match required TeamID: %s - Blocking", payload.TeamID, teamID)
-		log.Printf(err)
+		log.Print(err)
 		return errors.New(err)
 	}
 	return nil

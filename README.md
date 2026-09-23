@@ -17,7 +17,7 @@ A simple URL shortener written in Go with a React frontend and Postgres database
 - View all-time and seven-day query metrics with success rates and a daily histogram
 - Persistent light and dark modes
 - OpenSearch integration providing suggestions directly in the browser
-- Optional authentication using Azure AD or Okta
+- Optional authentication using Azure AD, Okta, or generic OpenID Connect
 - Slack `/` command integration
 - Slackbot integration
 
@@ -66,7 +66,8 @@ docker-compose up
 | `SENTRY_FRONTEND_DSN`       |          |                |                                                | Sentry DSN for react frontend                                                                          |
 | `SLACK_SIGNING_SECRET`      |          |                | xxxxxxxxxxx                                    | Slack signing secret to enable Slack `/go` command                                                     |
 | `SLACK_TEAM_ID`             |          |                | Txxxxxxxx                                      | Slack team id to restrict slash command responses to single team                                       |
-| `ENABLE_AUTH`               |          | false          |                                                | Enable Azure auth or not - if enabled, all other fields must be filled in                              |
+| `ENABLE_AUTH`               |          | false          |                                                | Enable authentication                                                                                  |
+| `AUTH_PROVIDER`             | auth     |                | oidc                                           | Active provider: `azure`, `okta`, or `oidc`                                                            |
 | `AUTH_EXPIRY_SECONDS`       |          | 2592000        |                                                | Auth cookie expiry (default 30 days)                                                                   |
 | `SECURE_COOKIES`            |          | true           |                                                | Use secure https only cookies                                                                          |
 | `AD_TENANT_ID`              |          |                |                                                | Azure AD tenant ID                                                                                     |
@@ -74,10 +75,19 @@ docker-compose up
 | `AD_CLIENT_SECRET`          |          |                |                                                | Azure AD client secret                                                                                 |
 | `OKTA_CLIENT_ID`            |          |                |                                                | Okta client ID                                                                                         |
 | `OKTA_CLIENT_SECRET`        |          |                |                                                | Okta client secret                                                                                     |
-| `OKTA_ISSUER`               |          |                | https://dev-123.oktapreview.com/oauth2/default | Okta issuer url                                                                                        |
+| `OKTA_ISSUER`               |          |                | https://dev-123.oktapreview.com/oauth2/default | Okta issuer URL                                                                                        |
+| `OIDC_ISSUER_URL`           | OIDC     |                | https://id.example.com/realms/go-url           | OpenID Provider issuer used for discovery                                                              |
+| `OIDC_CLIENT_ID`            | OIDC     |                | go-url                                         | OIDC client ID                                                                                         |
+| `OIDC_CLIENT_SECRET`        | OIDC     |                |                                                | OIDC client secret                                                                                     |
+| `OIDC_REDIRECT_URL`         | OIDC     |                | https://go.example.com/oidc/callback           | Registered OIDC callback URL                                                                           |
+| `OIDC_SCOPES`               |          | openid,profile,email |                                          | Comma-separated OIDC scopes                                                                            |
+| `OIDC_USERNAME_CLAIM`       |          | preferred_username |                                          | ID-token claim used as the username                                                                    |
+| `OIDC_EMAIL_CLAIM`          |          | email          |                                                | ID-token claim used as the email address                                                               |
 | `SESSION_TOKEN`             |          |                |                                                | Secret session token to store the user sessions                                                        |
 | `ALLOWED_IPS`               |          |                | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that are always allowed access, even with auth enabled                           |
 | `ALLOW_FORWARDED_FOR`       |          | false          |                                                | Retrieve origin IP from X-Forwarded-For header. Only enable if source is trusted, e.g. via Cloudfront  |
 | `FORWARDED_FOR_TRUST_LEVEL` |          | 1              |                                                | Number of levels to trust X-Forwarded-For header - should map to number of proxies used                |
+
+See the [generic OIDC guide](docs/authentication/OIDC.md) for provider setup, security behavior, logout, and troubleshooting.
 
 See the [API logging schema](docs/monitoring/LOGGING_SCHEMA.md) for event fields, ECS and OpenTelemetry mappings, correlation behavior, and excluded sensitive data.

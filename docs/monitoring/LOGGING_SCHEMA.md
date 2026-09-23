@@ -1,10 +1,10 @@
-# Proposed API Logging Schema
+# API Logging Schema
 
-This document proposes the JSON schema for API logs written to stdout. It is intended for review before implementation.
+This document describes the implemented JSON schema for API logs written to stdout. Structured request, URL query, and authentication failure events are available when `JSON_LOGS=true`.
 
-The application will emit Elastic Common Schema (ECS)-shaped JSON because Elastic Agent is the expected initial consumer. The selected fields either match OpenTelemetry semantic conventions directly or have a documented mapping to the OpenTelemetry Logs Data Model. Fields specific to Go URL use the `go_url.*` namespace.
+The application emits Elastic Common Schema (ECS)-shaped JSON because Elastic Agent is the expected initial consumer. The selected fields either match OpenTelemetry semantic conventions directly or have a documented mapping to the OpenTelemetry Logs Data Model. Fields specific to `go-url` use the `go_url.*` namespace.
 
-ECS and OpenTelemetry semantic conventions are converging, but they are not identical. The application will not emit duplicate ECS and OpenTelemetry representations of the same value. Translation to OTLP should happen in the OpenTelemetry Collector or Elastic ingest pipeline.
+ECS and OpenTelemetry semantic conventions are converging, but they are not identical. The application does not emit duplicate ECS and OpenTelemetry representations of the same value. Translation to OTLP can be performed by an OpenTelemetry Collector or Elastic ingest pipeline.
 
 ## ECS and OpenTelemetry mapping
 
@@ -96,6 +96,18 @@ The API emits one event for each distinct, normalized key explicitly requested b
 
 An unresolved query uses the same schema with `event.outcome` set to `failure`, `go_url.query.successful` set to `false`, and the message set to `URL query unresolved`. A failed resolution is an expected application outcome and remains at `INFO` severity.
 
+## Authentication failure event
+
+Event action: `authentication`
+
+Authentication failures use `event.outcome: failure`, `auth.provider`, and a stable `error.type`. Supported categories include invalid state or nonce, token exchange and validation failures, missing identity claims, and session failures. Authorization codes, state, nonce, PKCE verifiers, tokens, client secrets, and provider response bodies are never included.
+
+Example:
+
+```json
+{"@timestamp":"2026-09-22T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"WARN","message":"Authentication failed","event.action":"authentication","event.outcome":"failure","service.name":"go-url-api","http.request.id":"871de03da4de4fa68a6d1926f7067037","auth.provider":"oidc","error.type":"invalid_state"}
+```
+
 ## Error conventions
 
 Errors use the ECS `error.type` and `error.message` fields:
@@ -138,7 +150,7 @@ The application does not log:
 The existing `JSON_LOGS` setting controls output format:
 
 - `JSON_LOGS=true`: emit one ECS-shaped JSON object per stdout line using this schema.
-- `JSON_LOGS=false`: retain concise human-readable request and query logs.
+- `JSON_LOGS=false`: emit the same request, URL query, and authentication failure events in concise human-readable form.
 
 Service metadata configuration:
 

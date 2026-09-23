@@ -52,14 +52,12 @@ func ipWhitelisted(forwardedFor, remoteAddr string) bool {
 	return false
 }
 
-func whitelistedRoute(e echo.Context) bool {
-	whitelist := []string{"/health", "/callback", "/okta/callback", "/api/slack"}
-	for _, item := range whitelist {
-		if item == e.Request().URL.Path {
-			return true
-		}
+func (h *Handler) whitelistedRoute(e echo.Context) bool {
+	path := e.Request().URL.Path
+	if path == "/health" || path == "/api/slack" {
+		return true
 	}
-	return false
+	return h.Auth != nil && h.Auth.IsPublic(path)
 }
 
 // IPRestrict middleware will allow whitelisted ips through and handle auth
@@ -69,7 +67,7 @@ func (h *Handler) IPRestrict(next echo.HandlerFunc) echo.HandlerFunc {
 		allowedIps := appConfig.Auth.AllowedIPs
 		forwardedFor := e.Request().Header.Get("X-Forwarded-For")
 
-		if whitelistedRoute(e) || ipWhitelisted(forwardedFor, e.Request().RemoteAddr) {
+		if h.whitelistedRoute(e) || ipWhitelisted(forwardedFor, e.Request().RemoteAddr) {
 			return next(e)
 		}
 

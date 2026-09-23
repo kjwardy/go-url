@@ -12,6 +12,10 @@ const useStyles = makeStyles((theme: Theme) => ({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     fontWeight: 500,
   },
+  logout: {
+    display: 'flex',
+    marginLeft: theme.spacing(0.5),
+  },
   link: {
     display: 'flex',
     alignItems: 'center',
