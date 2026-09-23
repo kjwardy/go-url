@@ -71,6 +71,7 @@ Run the Go test suite from the API directory:
 ```sh
 cd api
 go test ./...
+go vet ./...
 ```
 
 Run the frontend formatting, lint, and production build checks from the frontend directory:
@@ -83,6 +84,8 @@ yarn build
 ```
 
 Please resolve new warnings or failures caused by your changes before submitting a pull request.
+
+GitHub Actions runs these API and frontend checks for every pull request targeting `master` and every push to `master`. CircleCI remains responsible for validating tagged releases and publishing Docker images.
 
 ## Pull request review
 
