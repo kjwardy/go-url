@@ -101,6 +101,8 @@ func (l *Logger) Query(requestID, key string, successful bool) {
 		message = "URL query resolved"
 	}
 	fields := l.base("INFO", message, "go_url.query", time.Now().UTC())
+	fields["event.category"] = []string{"web"}
+	fields["event.type"] = []string{"access"}
 	fields["event.outcome"] = outcome(successful)
 	fields["http.request.id"] = requestID
 	fields["go_url.query.key"] = key
@@ -118,6 +120,8 @@ func (l *Logger) request(c echo.Context, requestID string, duration time.Duratio
 		level = "WARN"
 	}
 	fields := l.base(level, "HTTP request completed", "http.server.request", time.Now().UTC())
+	fields["event.category"] = []string{"web"}
+	fields["event.type"] = []string{"access"}
 	fields["event.outcome"] = outcome(status < http.StatusBadRequest)
 	fields["event.duration"] = duration.Nanoseconds()
 	fields["http.request.id"] = requestID
@@ -163,7 +167,7 @@ func (l *Logger) write(fields map[string]interface{}) {
 	}
 	_, _ = fmt.Fprintf(l.output, "%s %s %s", fields["@timestamp"], fields["log.level"], fields["message"])
 	// Append relevant fields in key=value format
-	for _, key := range []string{"event.action", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "error.type", "error.message"} {
+	for _, key := range []string{"event.action", "event.category", "event.type", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "error.type", "error.message"} {
 		if value, ok := fields[key]; ok {
 			_, _ = fmt.Fprintf(l.output, " %s=%v", humanKey(key), value)
 		}

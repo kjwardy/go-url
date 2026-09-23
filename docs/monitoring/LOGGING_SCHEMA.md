@@ -15,6 +15,8 @@ ECS and OpenTelemetry semantic conventions are converging, but they are not iden
 | `log.level` | native | `SeverityText` | Text severity: `DEBUG`, `INFO`, `WARN`, or `ERROR` |
 | `message` | native | `Body` | Short, stable human-readable description |
 | `event.action` | native | `EventName` | Stable machine-readable event type |
+| `event.category` | native | record attribute | High-level ECS event category array |
+| `event.type` | native | record attribute | ECS event type array |
 | `event.outcome` | native | record attribute | Whether the operation succeeded or failed |
 | `event.duration` | native | record attribute | Event duration in nanoseconds |
 | `service.name` | exact match | resource attribute | Service emitting the record |
@@ -56,6 +58,8 @@ Additional fields:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `event.category` | string array | yes | `["web"]` |
+| `event.type` | string array | yes | `["access"]` |
 | `event.duration` | integer | yes | Request duration in nanoseconds |
 | `http.request.method` | string | yes | HTTP request method, retaining its original casing |
 | `http.route` | string | yes | Matched route template, not the raw URL |
@@ -65,12 +69,12 @@ Additional fields:
 
 `http.route` is an OpenTelemetry semantic-convention attribute without a direct ECS equivalent. It is retained under its OTel name because a route template is more useful and safer than a raw URL path. Elastic can store it as a custom field.
 
-Dynamic API, authentication, and redirect requests are logged. `/health` probes and static frontend requests under `/go` are excluded to avoid repetitive operational noise. Responses below status 400 use `event.outcome: success`; responses with status 400 or above use `event.outcome: failure`.
+Dynamic API, authentication, and redirect requests are logged. `/health` probes and static frontend requests under `/go` are excluded to avoid repetitive operational noise. HTTP requests use the valid ECS categorization `event.category: ["web"]` and `event.type: ["access"]`. Responses below status 400 use `event.outcome: success`; responses with status 400 or above use `event.outcome: failure`.
 
 Example:
 
 ```json
-{"@timestamp":"2026-09-20T14:30:00.123456789Z","ecs.version":"9.5.0","log.level":"INFO","message":"HTTP request completed","event.action":"http.server.request","event.outcome":"success","event.duration":4270000,"service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","http.request.method":"GET","http.route":"/:key","http.response.status_code":307}
+{"@timestamp":"2026-09-20T14:30:00.123456789Z","ecs.version":"9.5.0","log.level":"INFO","message":"HTTP request completed","event.action":"http.server.request","event.category":["web"],"event.type":["access"],"event.outcome":"success","event.duration":4270000,"service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","http.request.method":"GET","http.route":"/:key","http.response.status_code":307}
 ```
 
 For unexpected server errors, `error.message` is set to a generic value. Internal database errors, stack traces, and request data are not included. An ingestion pipeline may map `error.message` to the OTel `exception.message` attribute where the event represents an exception.
@@ -83,16 +87,18 @@ Additional fields:
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `event.category` | string array | yes | `["web"]` |
+| `event.type` | string array | yes | `["access"]` |
 | `go_url.query.key` | string | yes | Normalized URL key that was queried |
 | `go_url.query.successful` | boolean | yes | Whether the key resolved successfully |
 
 Example:
 
 ```json
-{"@timestamp":"2026-09-20T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"INFO","message":"URL query resolved","event.action":"go_url.query","event.outcome":"success","service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","go_url.query.key":"handbook","go_url.query.successful":true}
+{"@timestamp":"2026-09-20T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"INFO","message":"URL query resolved","event.action":"go_url.query","event.category":["web"],"event.type":["access"],"event.outcome":"success","service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","go_url.query.key":"handbook","go_url.query.successful":true}
 ```
 
-The API emits one event for each distinct, normalized key explicitly requested by the user. Multi-key requests can therefore produce both successful and unresolved events. Aliases expanded during resolution do not produce additional query events.
+The API emits one event for each distinct, normalized key explicitly requested by the user. URL query events use the valid ECS categorization `event.category: ["web"]` and `event.type: ["access"]`. Both fields are arrays as required by ECS. Multi-key requests can therefore produce both successful and unresolved events. Aliases expanded during resolution do not produce additional query events.
 
 An unresolved query uses the same schema with `event.outcome` set to `failure`, `go_url.query.successful` set to `false`, and the message set to `URL query unresolved`. A failed resolution is an expected application outcome and remains at `INFO` severity.
 
