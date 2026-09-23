@@ -32,6 +32,8 @@ func TestJSONRequestLog(t *testing.T) {
 	assertEqual(t, entry["log.level"], "INFO")
 	assertEqual(t, entry["message"], "HTTP request completed")
 	assertEqual(t, entry["event.action"], "http.server.request")
+	assertStringArray(t, entry, "event.category", "web")
+	assertStringArray(t, entry, "event.type", "access")
 	assertEqual(t, entry["event.outcome"], "success")
 	assertEqual(t, entry["ecs.version"], "9.5.0")
 	assertEqual(t, entry["service.name"], "go-url-api")
@@ -130,11 +132,26 @@ func TestQueryLog(t *testing.T) {
 	assertEqual(t, entry["log.level"], "INFO")
 	assertEqual(t, entry["message"], "URL query unresolved")
 	assertEqual(t, entry["event.action"], "go_url.query")
+	assertStringArray(t, entry, "event.category", "web")
+	assertStringArray(t, entry, "event.type", "access")
 	assertEqual(t, entry["event.outcome"], "failure")
 	assertEqual(t, entry["ecs.version"], "9.5.0")
 	assertEqual(t, entry["http.request.id"], "request-123")
 	assertEqual(t, entry["go_url.query.key"], "handbook")
 	assertEqual(t, entry["go_url.query.successful"], false)
+}
+
+func TestSuccessfulQueryLogCategorization(t *testing.T) {
+	var output bytes.Buffer
+	logger := New(Config{JSON: true, Output: &output})
+	logger.Query("request-123", "handbook", true)
+
+	entry := decodeEntry(t, output.Bytes())
+	assertEqual(t, entry["event.action"], "go_url.query")
+	assertStringArray(t, entry, "event.category", "web")
+	assertStringArray(t, entry, "event.type", "access")
+	assertEqual(t, entry["event.outcome"], "success")
+	assertEqual(t, entry["log.level"], "INFO")
 }
 
 func TestInternalErrorIsSanitized(t *testing.T) {
@@ -150,6 +167,8 @@ func TestInternalErrorIsSanitized(t *testing.T) {
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/fail", nil))
 	entry := decodeEntry(t, output.Bytes())
 	assertEqual(t, entry["log.level"], "ERROR")
+	assertStringArray(t, entry, "event.category", "web")
+	assertStringArray(t, entry, "event.type", "access")
 	assertEqual(t, entry["event.outcome"], "failure")
 	assertEqual(t, entry["error.type"], "internal_server_error")
 	assertEqual(t, entry["error.message"], "Internal server error")
@@ -180,5 +199,21 @@ func assertEqual(t *testing.T, got, want interface{}) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %#v, want %#v", got, want)
+	}
+}
+
+func assertStringArray(t *testing.T, entry map[string]interface{}, field string, want ...string) {
+	t.Helper()
+	values, ok := entry[field].([]interface{})
+	if !ok {
+		t.Fatalf("%s = %#v, want JSON array", field, entry[field])
+	}
+	if len(values) != len(want) {
+		t.Fatalf("%s = %#v, want %#v", field, values, want)
+	}
+	for i, value := range values {
+		if value != want[i] {
+			t.Errorf("%s[%d] = %#v, want %q", field, i, value, want[i])
+		}
 	}
 }
