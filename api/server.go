@@ -47,7 +47,9 @@ func main() {
 	e.Debug = appConfig.Debug
 
 	db.Init()
-	app.Init(e, logger)
+	if err := app.Init(e, logger); err != nil {
+		e.Logger.Fatal(err)
+	}
 	// Start server
 	go func() {
 		if err := e.Start(fmt.Sprintf(":%d", appConfig.Port)); err != nil && err != http.ErrServerClosed {

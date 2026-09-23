@@ -85,6 +85,15 @@ func RequestID(c echo.Context) string {
 	return requestID
 }
 
+func (l *Logger) AuthenticationFailure(requestID, provider, errorType string) {
+	fields := l.base("WARN", "Authentication failed", "authentication", time.Now().UTC())
+	fields["event.outcome"] = "failure"
+	fields["http.request.id"] = requestID
+	fields["auth.provider"] = provider
+	fields["error.type"] = errorType
+	l.write(fields)
+}
+
 func (l *Logger) Query(requestID, key string, successful bool) {
 	// Set message and outcome based on resolution result
 	message := "URL query unresolved"
@@ -154,7 +163,7 @@ func (l *Logger) write(fields map[string]interface{}) {
 	}
 	_, _ = fmt.Fprintf(l.output, "%s %s %s", fields["@timestamp"], fields["log.level"], fields["message"])
 	// Append relevant fields in key=value format
-	for _, key := range []string{"event.action", "event.outcome", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "error.type", "error.message"} {
+	for _, key := range []string{"event.action", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "error.type", "error.message"} {
 		if value, ok := fields[key]; ok {
 			_, _ = fmt.Fprintf(l.output, " %s=%v", humanKey(key), value)
 		}

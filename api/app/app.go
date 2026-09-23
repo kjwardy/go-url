@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"io"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/handler"
+	"github.com/kjwardy/go-url/api/handler/auth"
 	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/slackbot"
 	"github.com/labstack/echo"
@@ -17,13 +19,17 @@ import (
 )
 
 // Init sets up all and creates routes
-func Init(e *echo.Echo, logger *logging.Logger) {
+func Init(e *echo.Echo, logger *logging.Logger) error {
 	h := &handler.Handler{Logger: logger}
 
 	appConfig := config.GetConfig()
 	if appConfig.Auth.Enabled {
-		// Require authentication to be able to access routes
-		h.AuthInit(e)
+		manager, err := auth.NewManager(context.Background(), appConfig.Auth, appConfig.AppURI, logger)
+		if err != nil {
+			return err
+		}
+		h.Auth = manager
+		manager.RegisterRoutes(e)
 	}
 
 	e.Use(h.IPRestrict)
@@ -73,6 +79,7 @@ func Init(e *echo.Echo, logger *logging.Logger) {
 		s := &slackbot.SlackBot{}
 		go s.Init()
 	}
+	return nil
 }
 
 // TemplateRegistry ...
