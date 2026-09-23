@@ -1,6 +1,7 @@
 # Go URL
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/PTuWgk5XLi4dqPB1MLTwdb/3aA338iwpp64iPjk344dZR/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/PTuWgk5XLi4dqPB1MLTwdb/3aA338iwpp64iPjk344dZR/tree/master)
+[![GitHub Actions](https://github.com/kjwardy/go-url/actions/workflows/validate.yml/badge.svg?branch=master)](https://github.com/kjwardy/go-url/actions/workflows/validate.yml?query=branch%3Amaster)
 
 A simple URL shortener written in Go with a React frontend and Postgres database.
 
@@ -20,8 +21,6 @@ A simple URL shortener written in Go with a React frontend and Postgres database
 - Optional authentication using Azure AD, Okta, or generic OpenID Connect
 - Slack `/` command integration
 - Slackbot integration
-
-![Demo](.github/go-demo.gif)
 
 # Getting Started
 
@@ -45,7 +44,7 @@ Alteratively use the docker-compose file and run:
 docker-compose up
 ```
 
-## Enviroment Configuration
+## Environment Configuration
 
 | Env Var                     | Required | Default        | Example                                        | Description                                                                                            |
 | --------------------------- | -------- | -------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -66,27 +65,32 @@ docker-compose up
 | `SENTRY_FRONTEND_DSN`       |          |                |                                                | Sentry DSN for react frontend                                                                          |
 | `SLACK_SIGNING_SECRET`      |          |                | xxxxxxxxxxx                                    | Slack signing secret to enable Slack `/go` command                                                     |
 | `SLACK_TEAM_ID`             |          |                | Txxxxxxxx                                      | Slack team id to restrict slash command responses to single team                                       |
-| `ENABLE_AUTH`               |          | false          |                                                | Enable authentication                                                                                  |
-| `AUTH_PROVIDER`             | auth     |                | oidc                                           | Active provider: `azure`, `okta`, or `oidc`                                                            |
-| `AUTH_EXPIRY_SECONDS`       |          | 2592000        |                                                | Auth cookie expiry (default 30 days)                                                                   |
-| `SECURE_COOKIES`            |          | true           |                                                | Use secure https only cookies                                                                          |
-| `AD_TENANT_ID`              |          |                |                                                | Azure AD tenant ID                                                                                     |
-| `AD_CLIENT_ID`              |          |                |                                                | Azure AD client ID                                                                                     |
-| `AD_CLIENT_SECRET`          |          |                |                                                | Azure AD client secret                                                                                 |
-| `OKTA_CLIENT_ID`            |          |                |                                                | Okta client ID                                                                                         |
-| `OKTA_CLIENT_SECRET`        |          |                |                                                | Okta client secret                                                                                     |
-| `OKTA_ISSUER`               |          |                | https://dev-123.oktapreview.com/oauth2/default | Okta issuer URL                                                                                        |
-| `OIDC_ISSUER_URL`           | OIDC     |                | https://id.example.com/realms/go-url           | OpenID Provider issuer used for discovery                                                              |
-| `OIDC_CLIENT_ID`            | OIDC     |                | go-url                                         | OIDC client ID                                                                                         |
-| `OIDC_CLIENT_SECRET`        | OIDC     |                |                                                | OIDC client secret                                                                                     |
-| `OIDC_REDIRECT_URL`         | OIDC     |                | https://go.example.com/oidc/callback           | Registered OIDC callback URL                                                                           |
-| `OIDC_SCOPES`               |          | openid,profile,email |                                          | Comma-separated OIDC scopes                                                                            |
-| `OIDC_USERNAME_CLAIM`       |          | preferred_username |                                          | ID-token claim used as the username                                                                    |
-| `OIDC_EMAIL_CLAIM`          |          | email          |                                                | ID-token claim used as the email address                                                               |
-| `SESSION_TOKEN`             |          |                |                                                | Secret session token to store the user sessions                                                        |
-| `ALLOWED_IPS`               |          |                | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that are always allowed access, even with auth enabled                           |
-| `ALLOW_FORWARDED_FOR`       |          | false          |                                                | Retrieve origin IP from X-Forwarded-For header. Only enable if source is trusted, e.g. via Cloudfront  |
-| `FORWARDED_FOR_TRUST_LEVEL` |          | 1              |                                                | Number of levels to trust X-Forwarded-For header - should map to number of proxies used                |
+
+### Authentication Configuration
+
+| Env Var                     | Required | Default              | Example                                        | Description                                                                                           |
+| --------------------------- | -------- | -------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ENABLE_AUTH`               |          | false                |                                                | Enable authentication                                                                                 |
+| `AUTH_PROVIDER`             | auth     |                      | oidc                                           | Active provider: `azure`, `okta`, or `oidc`                                                           |
+| `AUTH_EXPIRY_SECONDS`       |          | 2592000              |                                                | Auth cookie expiry (default 30 days)                                                                  |
+| `SECURE_COOKIES`            |          | true                 |                                                | Use secure HTTPS-only cookies                                                                         |
+| `SESSION_TOKEN`             | auth     |                      |                                                | Secret signing key for application sessions                                                           |
+| `AD_TENANT_ID`              | Azure   |                      |                                                | Azure AD tenant ID                                                                                    |
+| `AD_CLIENT_ID`              | Azure   |                      |                                                | Azure AD client ID                                                                                    |
+| `AD_CLIENT_SECRET`          | Azure   |                      |                                                | Azure AD client secret                                                                                |
+| `OKTA_CLIENT_ID`            | Okta    |                      |                                                | Okta client ID                                                                                        |
+| `OKTA_CLIENT_SECRET`        | Okta    |                      |                                                | Okta client secret                                                                                    |
+| `OKTA_ISSUER`               | Okta    |                      | https://dev-123.oktapreview.com/oauth2/default | Okta issuer URL                                                                                       |
+| `OIDC_ISSUER_URL`           | OIDC    |                      | https://id.example.com/realms/go-url           | OpenID Provider issuer used for discovery                                                             |
+| `OIDC_CLIENT_ID`            | OIDC    |                      | go-url                                         | OIDC client ID                                                                                        |
+| `OIDC_CLIENT_SECRET`        | OIDC    |                      |                                                | OIDC client secret                                                                                    |
+| `OIDC_REDIRECT_URL`         | OIDC    |                      | https://go.example.com/oidc/callback           | Registered OIDC callback URL                                                                          |
+| `OIDC_SCOPES`               |          | openid,profile,email |                                                | Comma-separated OIDC scopes                                                                           |
+| `OIDC_USERNAME_CLAIM`       |          | preferred_username   |                                                | ID-token claim used as the username                                                                   |
+| `OIDC_EMAIL_CLAIM`          |          | email                |                                                | ID-token claim used as the email address                                                              |
+| `ALLOWED_IPS`               |          |                      | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that bypass authentication                                                      |
+| `ALLOW_FORWARDED_FOR`       |          | false                |                                                | Retrieve origin IP from X-Forwarded-For. Enable only behind a trusted proxy                            |
+| `FORWARDED_FOR_TRUST_LEVEL` |          | 1                    |                                                | Number of trusted proxy levels in X-Forwarded-For                                                     |
 
 See the [generic OIDC guide](docs/authentication/OIDC.md) for provider setup, security behavior, logout, and troubleshooting.
 
