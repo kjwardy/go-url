@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Validated request correlation IDs returned through `X-Request-ID`
 - Service version and environment metadata for structured logs
 - ECS version and event outcome fields to all structured logs
+- Timestamp index for query history and metrics lookups
 
 ## [1.0.0] - 2026-09-19
 

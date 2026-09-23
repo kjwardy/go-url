@@ -90,4 +90,12 @@ func createSchema() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	_, err = database.Exec(`
+		CREATE INDEX IF NOT EXISTS url_queries_queried_at_idx
+		ON url_queries (queried_at)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
