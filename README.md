@@ -24,7 +24,7 @@ A simple URL shortener written in Go with a React frontend and Postgres database
 
 # Getting Started
 
-The recommended way to test and deploy is using Docker. You will need to run both the go-url app, and the Postgres DB.
+The recommended way to test and deploy is using Docker. You will need to run both the `go-url` app, and the Postgres database.
 
 **Start Postgres**
 
