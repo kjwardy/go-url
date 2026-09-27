@@ -23,6 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Authentication providers are selected explicitly with `AUTH_PROVIDER` and conflicting configuration is rejected at startup
 - Azure AD and Okta now use provider-neutral session identity and per-login state
 
+### Fixed
+
+- Browser-generated `/.well-known/*` requests now return 404 without entering URL resolution or query history
+- Frontend development proxy no longer incorrectly rejects short links beginning with `go`
+
 ## [1.0.0] - 2026-09-19
 
 ### Added
