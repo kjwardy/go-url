@@ -1,19 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import FormControl from '@material-ui/core/FormControl';
-import InputLabel from '@material-ui/core/InputLabel';
-import MenuItem from '@material-ui/core/MenuItem';
-import Paper from '@material-ui/core/Paper';
-import Select from '@material-ui/core/Select';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import Tooltip from '@material-ui/core/Tooltip';
-import CheckIcon from '@material-ui/icons/Check';
-import CloseIcon from '@material-ui/icons/Close';
-import useStyles from './useStyles';
+import { Check, X } from 'lucide-react';
+import { Card } from '../ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 type HistoryLimit = 25 | 50 | 100;
 
@@ -31,7 +35,6 @@ interface HistoryProps {
 const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
   const [limit, setLimit] = useState<HistoryLimit>(25);
   const [history, setHistory] = useState<HistoryEntry[]>();
-  const classes = useStyles({});
 
   useEffect(() => {
     axios
@@ -43,37 +46,40 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
   }, [limit, displayFlashError]);
 
   return (
-    <Paper className={classes.paper}>
-      <div className={classes.header}>
-        <h3>Query History</h3>
-        <FormControl variant="outlined" size="small">
-          <InputLabel id="history-limit-label">Records</InputLabel>
-          <Select
-            labelId="history-limit-label"
+    <Card className="overflow-x-auto p-5 shadow-[0_10px_35px_rgba(20,29,60,0.08)]">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold">Query History</h3>
+        <Select
+          value={String(limit)}
+          onValueChange={(value) => setLimit(Number(value) as HistoryLimit)}
+        >
+          <SelectTrigger
             id="history-limit"
-            value={limit}
-            onChange={(event) =>
-              setLimit(Number(event.target.value) as HistoryLimit)
-            }
-            label="Records"
+            aria-label="Records"
+            className="w-28"
           >
-            <MenuItem value={25}>25</MenuItem>
-            <MenuItem value={50}>50</MenuItem>
-            <MenuItem value={100}>100</MenuItem>
-          </Select>
-        </FormControl>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {history && history.length === 0 ? (
-        <p>No query history found - go nuts!</p>
+        <p className="text-sm text-muted-foreground">
+          No query history found - go nuts!
+        </p>
       ) : (
-        <Table size="small">
-          <TableHead>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell>Timestamp</TableCell>
-              <TableCell>Query</TableCell>
-              <TableCell align="center">Successful</TableCell>
+              <TableHead>Timestamp</TableHead>
+              <TableHead>Query</TableHead>
+              <TableHead className="text-center">Successful</TableHead>
             </TableRow>
-          </TableHead>
+          </TableHeader>
           <TableBody>
             {(history || []).map((entry) => (
               <TableRow key={entry.id}>
@@ -81,20 +87,26 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
                   {new Date(entry.queried_at).toLocaleString()}
                 </TableCell>
                 <TableCell>{entry.url_key}</TableCell>
-                <TableCell align="center">
+                <TableCell className="text-center">
                   {entry.successful ? (
-                    <Tooltip title="Resolved successfully">
-                      <CheckIcon
-                        className={classes.successful}
-                        aria-label="Resolved successfully"
-                      />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Check
+                          className="inline h-4 w-4 text-emerald-600"
+                          aria-label="Resolved successfully"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>Resolved successfully</TooltipContent>
                     </Tooltip>
                   ) : (
-                    <Tooltip title="Did not resolve">
-                      <CloseIcon
-                        className={classes.unsuccessful}
-                        aria-label="Did not resolve"
-                      />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <X
+                          className="inline h-4 w-4 text-destructive"
+                          aria-label="Did not resolve"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>Did not resolve</TooltipContent>
                     </Tooltip>
                   )}
                 </TableCell>
@@ -103,7 +115,7 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
           </TableBody>
         </Table>
       )}
-    </Paper>
+    </Card>
   );
 };
 

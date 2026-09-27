@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { connect } from 'react-redux';
 import axios from 'axios';
-import Button from '@material-ui/core/Button';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import {
   displayFlashError,
   displayFlashSuccess,
 } from '../../redux/flash/actions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
 
 interface DeleteModalOwnProps {
   urlKey: string;
@@ -51,32 +54,32 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
   };
 
   return (
-    <Dialog open onClose={onClose} data-e2e="delete-modal">
-      <DialogTitle>{`Delete ${urlKey}?`}</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          {`Are you sure you want to delete "${urlKey}"? This cannot be undone.`}
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={onClose}
-          color="primary"
-          data-e2e="delete-cancel"
-          disabled={deleting}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={deleteUrl}
-          color="secondary"
-          data-e2e="delete-confirm"
-          disabled={deleting}
-        >
-          Delete
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <AlertDialog open onOpenChange={(open) => !open && !deleting && onClose()}>
+      <AlertDialogContent data-e2e="delete-modal">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Delete ${urlKey}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {`Are you sure you want to delete "${urlKey}"? This cannot be undone.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex justify-end gap-2">
+          <AlertDialogCancel data-e2e="delete-cancel" disabled={deleting}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onSelect={(event) => {
+              event.preventDefault();
+              deleteUrl();
+            }}
+            data-e2e="delete-confirm"
+            disabled={deleting}
+          >
+            Delete
+          </AlertDialogAction>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

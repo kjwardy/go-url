@@ -1,8 +1,10 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import Snackbar from '@material-ui/core/Snackbar';
+import { CheckCircle2, CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { clearFlash } from '../../redux/flash/actions';
-import SnackbarContentWrapper, { Variant } from './SnackbarContentWrapper';
+import { Toast, ToastClose, ToastTitle } from '../ui/toast';
+
+export type Variant = 'success' | 'warning' | 'error' | 'info';
 
 interface AlertProps {
   variant: Variant;
@@ -10,26 +12,33 @@ interface AlertProps {
   clearFlash: () => void;
 }
 
+const alertVariant = {
+  success: 'success',
+  warning: 'warning',
+  error: 'destructive',
+  info: 'info',
+} as const;
+
+const variantIcon = {
+  success: CheckCircle2,
+  warning: TriangleAlert,
+  error: CircleAlert,
+  info: Info,
+};
+
 const Alert = ({ variant, message, clearFlash }: AlertProps) => {
-  const onClose = (_: any, reason: string) =>
-    reason === 'clickaway' && clearFlash();
+  const Icon = variantIcon[variant];
   return (
-    <Snackbar
+    <Toast
       data-e2e="alert"
-      anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'center',
-      }}
+      variant={alertVariant[variant]}
       open
-      autoHideDuration={6000}
-      onClose={onClose}
+      onOpenChange={(open) => !open && clearFlash()}
     >
-      <SnackbarContentWrapper
-        onClose={onClose}
-        variant={variant}
-        message={message}
-      />
-    </Snackbar>
+      <Icon aria-hidden="true" className="h-5 w-5" />
+      <ToastTitle>{message}</ToastTitle>
+      <ToastClose aria-label="Close alert" />
+    </Toast>
   );
 };
 

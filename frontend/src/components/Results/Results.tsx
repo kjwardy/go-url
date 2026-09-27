@@ -1,18 +1,18 @@
 import React, { useState, useCallback } from 'react';
-import DeleteIcon from '@material-ui/icons/Delete';
-import EditIcon from '@material-ui/icons/Edit';
-import IconButton from '@material-ui/core/IconButton';
-import LaunchIcon from '@material-ui/icons/Launch';
-import Paper from '@material-ui/core/Paper';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
+import { ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 
 import DeleteModal from '../DeleteModal';
 import EditModal from '../EditModal';
-import useStyles from './useStyles';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 
 interface IResult {
   key: string;
@@ -33,7 +33,6 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
   const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
   const clearSelected = useCallback(() => setSelected(null), []);
   const clearDeleteSelected = useCallback(() => setDeleteSelected(null), []);
-  const classes = useStyles({});
   const results = data.filter((result) => !deletedKeys.includes(result.key));
 
   const getFormattedUrl = (url: string) => {
@@ -41,7 +40,7 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
     const parts = url.split(regex);
     return parts.map((part, i) =>
       part.match(regex) ? (
-        <span key={i} className={classes.urlReplace}>
+        <span key={i} className="font-bold text-foreground">
           {part}
         </span>
       ) : (
@@ -69,71 +68,86 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
         />
       )}
 
-      <Paper className={classes.paper} data-e2e={title}>
-        <h3>{title}</h3>
+      <Card
+        className="overflow-x-auto p-5 shadow-[0_10px_35px_rgba(20,29,60,0.08)]"
+        data-e2e={title}
+      >
+        <h3 className="mb-4 text-lg font-semibold">{title}</h3>
         {!results.length ? (
-          <p>No results found. Help others by adding it.</p>
+          <p className="text-sm text-muted-foreground">
+            No results found. Help others by adding it.
+          </p>
         ) : (
-          <Table size="small">
-            <TableHead>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell>Key</TableCell>
-                <TableCell>Url</TableCell>
-                <TableCell align="right">Views</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableHead>Key</TableHead>
+                <TableHead>Url</TableHead>
+                <TableHead className="text-right">Views</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            </TableHead>
+            </TableHeader>
             <TableBody>
               {results.map((r) => (
-                <TableRow key={r.key} className={classes.tableRow}>
+                <TableRow key={r.key}>
                   <TableCell>{r.key}</TableCell>
-                  <TableCell className={classes.urlCell}>
+                  <TableCell className="max-w-[300px] break-words max-sm:max-w-[100px]">
                     {r.alias && r.alias.length ? (
                       r.alias.map((alias) => (
                         <a
                           key={alias}
-                          className={classes.url}
+                          className="font-medium text-primary hover:underline"
                           href={`/${encodeURIComponent(alias)}`}
                         >
                           {alias}
-                          <LaunchIcon className={classes.launchIcon} />
+                          <ArrowUpRight
+                            aria-hidden="true"
+                            className="ml-0.5 inline h-3 w-3"
+                          />
                         </a>
                       ))
                     ) : (
                       <a
-                        className={classes.url}
+                        className="font-medium text-primary hover:underline"
                         href={`/${encodeURIComponent(r.key)}`}
                       >
                         {getFormattedUrl(r.url)}
-                        <LaunchIcon className={classes.launchIcon} />
+                        <ArrowUpRight
+                          aria-hidden="true"
+                          className="ml-0.5 inline h-3 w-3"
+                        />
                       </a>
                     )}
                   </TableCell>
-                  <TableCell align="right">{r.views}</TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      className={classes.actionIcon}
+                  <TableCell className="text-right">{r.views}</TableCell>
+                  <TableCell className="whitespace-nowrap text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-primary"
                       onClick={() => setSelected(r)}
                       aria-label={`Edit ${r.key}`}
                       data-e2e="edit"
                     >
-                      <EditIcon className={classes.edit} />
-                    </IconButton>
-                    <IconButton
-                      className={classes.actionIcon}
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive"
                       onClick={() => setDeleteSelected(r)}
                       aria-label={`Delete ${r.key}`}
                       data-e2e="delete"
                     >
-                      <DeleteIcon className={classes.delete} />
-                    </IconButton>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
-      </Paper>
+      </Card>
     </div>
   );
 };

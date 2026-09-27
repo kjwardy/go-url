@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { connect } from 'react-redux';
-import Paper from '@material-ui/core/Paper';
-import Tab from '@material-ui/core/Tab';
-import Tabs from '@material-ui/core/Tabs';
 import { useRouteMatch, useLocation } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
 import MostWanted from '../../components/MostWanted';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
-import useStyles from './useStyles';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../../components/ui/tabs';
 
 interface HomeProps {
   displayFlashError: (message: string) => void;
@@ -25,8 +27,6 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
   const [querySearchResults, setQuerySearchResults] = useState<any[]>();
   const [popular, setPopular] = useState<any[]>();
-  const [activeTab, setActiveTab] = useState(0);
-  const classes = useStyles({});
   const match = useRouteMatch<{ query: string }>();
   const location = useLocation();
 
@@ -77,10 +77,10 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     : [];
 
   return (
-    <div className={classes.dashboard}>
-      <main className={classes.main}>
+    <div className="mx-auto grid max-w-[1160px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,820px)_300px]">
+      <main className="min-w-0">
         {searchResults && (
-          <div className={classes.container}>
+          <div className="mb-6">
             <Results
               data={applyUpdates(
                 addCreated(searchResults, createdSearchResults),
@@ -89,37 +89,27 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
             />
           </div>
         )}
-        <Paper className={classes.tabs}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, value) => setActiveTab(value)}
-            indicatorColor="primary"
-            textColor="primary"
-            aria-label="URL data views"
-          >
-            <Tab label="Most Popular" />
-            <Tab label="Most Wanted" />
-            <Tab label="History" />
-          </Tabs>
-        </Paper>
-        {activeTab === 0 && (popular || created.length > 0) && (
-          <div className={classes.container}>
-            <Results
-              data={sortByViews(applyUpdates(addCreated(popular)))}
-              title="Most Popular"
-            />
-          </div>
-        )}
-        {activeTab === 1 && (
-          <div className={classes.container}>
+        <Tabs defaultValue="popular" aria-label="URL data views">
+          <TabsList>
+            <TabsTrigger value="popular">Most Popular</TabsTrigger>
+            <TabsTrigger value="wanted">Most Wanted</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="popular">
+            {Boolean(popular || created.length > 0) && (
+              <Results
+                data={sortByViews(applyUpdates(addCreated(popular)))}
+                title="Most Popular"
+              />
+            )}
+          </TabsContent>
+          <TabsContent value="wanted">
             <MostWanted displayFlashError={displayFlashError} />
-          </div>
-        )}
-        {activeTab === 2 && (
-          <div className={classes.container}>
+          </TabsContent>
+          <TabsContent value="history">
             <History displayFlashError={displayFlashError} />
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
       <Metrics displayFlashError={displayFlashError} />
     </div>
