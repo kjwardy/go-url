@@ -151,7 +151,6 @@ func (u *URLQuery) GetMetrics(timezone string) (*URLQueryMetrics, error) {
 			) AS success_percentage_last_seven_days
 		FROM url_queries
 		CROSS JOIN bounds
-		GROUP BY bounds.start_at
 	`, timezone, timezone)
 	if err != nil {
 		return metrics, err
