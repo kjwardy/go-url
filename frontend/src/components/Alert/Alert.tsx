@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
-import { CheckCircle2, CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { clearFlash } from '../../redux/flash/actions';
-import { Toast, ToastClose, ToastTitle } from '../ui/toast';
+import { toast } from '../ui/toast';
 
 export type Variant = 'success' | 'warning' | 'error' | 'info';
 
@@ -12,34 +11,19 @@ interface AlertProps {
   clearFlash: () => void;
 }
 
-const alertVariant = {
-  success: 'success',
-  warning: 'warning',
-  error: 'destructive',
-  info: 'info',
-} as const;
-
-const variantIcon = {
-  success: CheckCircle2,
-  warning: TriangleAlert,
-  error: CircleAlert,
-  info: Info,
-};
-
 const Alert = ({ variant, message, clearFlash }: AlertProps) => {
-  const Icon = variantIcon[variant];
-  return (
-    <Toast
-      data-e2e="alert"
-      variant={alertVariant[variant]}
-      open
-      onOpenChange={(open) => !open && clearFlash()}
-    >
-      <Icon aria-hidden="true" className="h-5 w-5" />
-      <ToastTitle>{message}</ToastTitle>
-      <ToastClose aria-label="Close alert" />
-    </Toast>
-  );
+  useEffect(() => {
+    toast.add({
+      id: 'flash-message',
+      title: message,
+      type: variant,
+      timeout: 6000,
+      priority: variant === 'error' ? 'high' : 'low',
+      onClose: clearFlash,
+    });
+  }, [clearFlash, message, variant]);
+
+  return null;
 };
 
 const mapDispatch = {

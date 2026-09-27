@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { connect } from 'react-redux';
-import { useRouteMatch, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
 import MostWanted from '../../components/MostWanted';
@@ -18,21 +18,39 @@ import {
 interface HomeProps {
   displayFlashError: (message: string) => void;
   search: {
-    results?: any[];
     created?: any[];
     updated?: any[];
+    deleted?: string[];
   };
 }
 
 const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
-  const [querySearchResults, setQuerySearchResults] = useState<any[]>();
   const [popular, setPopular] = useState<any[]>();
-  const match = useRouteMatch<{ query: string }>();
+  const [popularStatus, setPopularStatus] = useState<
+    'loading' | 'loaded' | 'error'
+  >('loading');
+  const [popularRetryCount, setPopularRetryCount] = useState(0);
   const location = useLocation();
 
   useEffect(() => {
-    axios.get<any>('/api/popular').then(({ data }) => setPopular(data));
-  }, []);
+    let cancelled = false;
+    setPopularStatus('loading');
+    axios
+      .get<any[]>('/api/popular')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setPopular(data);
+        setPopularStatus('loaded');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPopularStatus('error');
+        displayFlashError(err.response.data.message || err.response.data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayFlashError, popularRetryCount]);
 
   useEffect(() => {
     const search = location.search;
@@ -41,15 +59,6 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       displayFlashError(message as string);
     }
   }, [location.search, displayFlashError]);
-
-  useEffect(() => {
-    const query = match.params.query;
-    if (query) {
-      axios
-        .get<any>('/api/search', { params: { q: query } })
-        .then(({ data }) => setQuerySearchResults(data));
-    }
-  }, [match.params.query]);
 
   const created = search.created || [];
   // Place newly created URLs first and remove any duplicate API results
@@ -61,6 +70,7 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     ),
   ];
   const updated = search.updated || [];
+  const deleted = search.deleted || [];
   // Replace matching rows while preserving view counts omitted by updates
   const applyUpdates = (results: any[]) =>
     results.map((result) => {
@@ -71,24 +81,15 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     });
   const sortByViews = (results: any[]) =>
     [...results].sort((first, second) => second.views - first.views);
-  const searchResults = search.results || querySearchResults;
-  const createdSearchResults = match.params.query
-    ? created.filter((result) => result.key.includes(match.params.query))
-    : [];
+  const popularResults = sortByViews(
+    applyUpdates(addCreated(popular)).filter(
+      (result) => !deleted.includes(result.key),
+    ),
+  );
 
   return (
     <div className="mx-auto grid max-w-[1160px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,820px)_300px]">
       <main className="min-w-0">
-        {searchResults && (
-          <div className="mb-6">
-            <Results
-              data={applyUpdates(
-                addCreated(searchResults, createdSearchResults),
-              )}
-              title="Search Results"
-            />
-          </div>
-        )}
         <Tabs defaultValue="popular" aria-label="URL data views">
           <TabsList>
             <TabsTrigger value="popular">Most Popular</TabsTrigger>
@@ -96,12 +97,29 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
             <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
           <TabsContent value="popular">
-            {Boolean(popular || created.length > 0) && (
-              <Results
-                data={sortByViews(applyUpdates(addCreated(popular)))}
-                title="Most Popular"
-              />
-            )}
+            <Results
+              data={popularResults}
+              title="Most Popular"
+              emptyState={
+                popularStatus === 'loading' && popularResults.length === 0
+                  ? {
+                      title: 'Loading popular URLs',
+                      description: 'The most popular URLs will appear here.',
+                      loading: true,
+                    }
+                  : popularStatus === 'error' && popularResults.length === 0
+                  ? {
+                      title: 'Could not load popular URLs',
+                      description:
+                        'Try again later. The request failed before the list could be loaded.',
+                      onRetry: () => setPopularRetryCount((count) => count + 1),
+                    }
+                  : {
+                      title: 'No popular URLs yet',
+                      description: 'Add a URL to get the list started.',
+                    }
+              }
+            />
           </TabsContent>
           <TabsContent value="wanted">
             <MostWanted displayFlashError={displayFlashError} />

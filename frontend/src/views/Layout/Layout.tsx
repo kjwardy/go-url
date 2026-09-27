@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { connect } from 'react-redux';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import EditModal from '../../components/EditModal';
 import Header from '../../components/Header';
@@ -30,42 +30,37 @@ const Layout: React.FC<LayoutProps> = ({
   onToggleMode,
 }) => {
   const [addOpen, setAddOpen] = useState(false);
-  const [query, onSearch] = useState<string>();
   const hideAdd = useCallback(() => setAddOpen(false), []);
-  const history = useHistory();
   const location = useLocation();
   // Pre-populate field if not found
   const urlQuery =
     location.search.includes('message=') &&
     decodeURIComponent(location.pathname.slice(1));
 
-  useEffect(() => {
-    if (query === undefined) return;
-    history.push(`/${encodeURIComponent(query)}`);
-  }, [query, history]);
-
   return (
-    <div className="min-h-screen bg-background bg-[radial-gradient(circle_at_85%_0%,rgba(64,84,178,0.08),transparent_28%)] text-foreground dark:bg-[radial-gradient(circle_at_85%_0%,rgba(142,162,255,0.08),transparent_28%)]">
+    <div className="min-h-screen bg-background text-foreground">
       {flash.message && (
         <Alert variant={flash.variant} message={flash.message} />
       )}
       {addOpen && (
         <EditModal onClose={hideAdd} urlKey={urlQuery || undefined} />
       )}
-      <Header onSearch={onSearch} mode={mode} onToggleMode={onToggleMode} />
+      <Header mode={mode} onToggleMode={onToggleMode} />
       {children}
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            data-e2e="add-button"
-            variant="secondary"
-            size="icon"
-            aria-label="Add New URL"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
+        <TooltipTrigger
+          render={
+            <Button
+              data-e2e="add-button"
+              variant="secondary"
+              size="icon-lg"
+              aria-label="Add New URL"
+              className="fixed bottom-6 right-6 size-16 rounded-full shadow-md"
+              onClick={() => setAddOpen(true)}
+            />
+          }
+        >
+          <Plus className="h-9 w-9" />
         </TooltipTrigger>
         <TooltipContent>Add New URL</TooltipContent>
       </Tooltip>

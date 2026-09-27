@@ -5,9 +5,8 @@ import Routes from './routes';
 import store from './redux';
 import { init as initSentry } from '@sentry/browser';
 import { SENTRY_DSN } from './config';
-import { ToastViewport, ToastProvider } from './components/ui/toast';
+import { Toaster } from './components/ui/toast';
 import { TooltipProvider } from './components/ui/tooltip';
-import 'typeface-roboto';
 import './index.css';
 // import * as serviceWorker from './serviceWorker';
 
@@ -38,10 +37,9 @@ const App = () => {
   return (
     <Provider store={store}>
       <TooltipProvider>
-        <ToastProvider duration={6000} swipeDirection="up">
+        <Toaster>
           <Routes mode={mode} onToggleMode={toggleMode} />
-          <ToastViewport />
-        </ToastProvider>
+        </Toaster>
       </TooltipProvider>
     </Provider>
   );

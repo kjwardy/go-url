@@ -3,8 +3,9 @@ import { ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 
 import DeleteModal from '../DeleteModal';
 import EditModal from '../EditModal';
+import EmptyState from '../EmptyState/EmptyState';
 import { Button } from '../ui/button';
-import { Card } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import {
   Table,
   TableBody,
@@ -24,9 +25,15 @@ interface IResult {
 interface ResultsProps {
   data: IResult[];
   title: string;
+  emptyState?: {
+    title: string;
+    description: string;
+    loading?: boolean;
+    onRetry?: () => void;
+  };
 }
 
-const Results: React.FC<ResultsProps> = ({ data, title }) => {
+const Results: React.FC<ResultsProps> = ({ data, title, emptyState }) => {
   const [selected, setSelected] = useState<IResult | null>(null);
   const [deleteSelected, setDeleteSelected] = useState<IResult | null>(null);
   // Track deleted keys locally so rows disappear without reloading the page
@@ -68,85 +75,91 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
         />
       )}
 
-      <Card
-        className="overflow-x-auto p-5 shadow-[0_10px_35px_rgba(20,29,60,0.08)]"
-        data-e2e={title}
-      >
-        <h3 className="mb-4 text-lg font-semibold">{title}</h3>
-        {!results.length ? (
-          <p className="text-sm text-muted-foreground">
-            No results found. Help others by adding it.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Key</TableHead>
-                <TableHead>Url</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {results.map((r) => (
-                <TableRow key={r.key}>
-                  <TableCell>{r.key}</TableCell>
-                  <TableCell className="max-w-[300px] break-words max-sm:max-w-[100px]">
-                    {r.alias && r.alias.length ? (
-                      r.alias.map((alias) => (
+      <Card data-e2e={title}>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!results.length ? (
+            <EmptyState
+              title={emptyState?.title || 'No results found'}
+              description={
+                emptyState?.description || 'Help others by adding it.'
+              }
+              loading={emptyState?.loading}
+              onRetry={emptyState?.onRetry}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Key</TableHead>
+                  <TableHead>Url</TableHead>
+                  <TableHead className="text-right">Views</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {results.map((r) => (
+                  <TableRow key={r.key}>
+                    <TableCell>{r.key}</TableCell>
+                    <TableCell className="max-w-[300px] break-words max-sm:max-w-[100px]">
+                      {r.alias && r.alias.length ? (
+                        r.alias.map((alias) => (
+                          <a
+                            key={alias}
+                            className="font-medium text-primary hover:underline"
+                            href={`/${encodeURIComponent(alias)}`}
+                          >
+                            {alias}
+                            <ArrowUpRight
+                              aria-hidden="true"
+                              className="ml-0.5 inline h-3 w-3"
+                            />
+                          </a>
+                        ))
+                      ) : (
                         <a
-                          key={alias}
                           className="font-medium text-primary hover:underline"
-                          href={`/${encodeURIComponent(alias)}`}
+                          href={`/${encodeURIComponent(r.key)}`}
                         >
-                          {alias}
+                          {getFormattedUrl(r.url)}
                           <ArrowUpRight
                             aria-hidden="true"
                             className="ml-0.5 inline h-3 w-3"
                           />
                         </a>
-                      ))
-                    ) : (
-                      <a
-                        className="font-medium text-primary hover:underline"
-                        href={`/${encodeURIComponent(r.key)}`}
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{r.views}</TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-primary"
+                        onClick={() => setSelected(r)}
+                        aria-label={`Edit ${r.key}`}
+                        data-e2e="edit"
                       >
-                        {getFormattedUrl(r.url)}
-                        <ArrowUpRight
-                          aria-hidden="true"
-                          className="ml-0.5 inline h-3 w-3"
-                        />
-                      </a>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{r.views}</TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-primary"
-                      onClick={() => setSelected(r)}
-                      aria-label={`Edit ${r.key}`}
-                      data-e2e="edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-destructive"
-                      onClick={() => setDeleteSelected(r)}
-                      aria-label={`Delete ${r.key}`}
-                      data-e2e="delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive"
+                        onClick={() => setDeleteSelected(r)}
+                        aria-label={`Delete ${r.key}`}
+                        data-e2e="delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

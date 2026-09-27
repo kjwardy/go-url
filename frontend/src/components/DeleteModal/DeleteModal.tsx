@@ -5,6 +5,7 @@ import {
   displayFlashError,
   displayFlashSuccess,
 } from '../../redux/flash/actions';
+import { urlDeleted } from '../../redux/search/actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ interface DeleteModalOwnProps {
 interface DeleteModalDispatchProps {
   displayFlashSuccess: (message: string) => void;
   displayFlashError: (message: string) => void;
+  urlDeleted: (key: string) => void;
 }
 
 type DeleteModalProps = DeleteModalOwnProps & DeleteModalDispatchProps;
@@ -34,6 +36,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
   onDeleted,
   displayFlashSuccess,
   displayFlashError,
+  urlDeleted,
 }) => {
   const [deleting, setDeleting] = useState(false);
 
@@ -44,6 +47,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
       .delete(`/${encodeURIComponent(urlKey)}`)
       .then(() => {
         displayFlashSuccess(`Successfully deleted ${urlKey}`);
+        urlDeleted(urlKey);
         onDeleted();
         onClose();
       })
@@ -67,8 +71,8 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onSelect={(event) => {
+            variant="destructive"
+            onClick={(event) => {
               event.preventDefault();
               deleteUrl();
             }}
@@ -86,6 +90,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
 const mapDispatch = {
   displayFlashSuccess,
   displayFlashError,
+  urlDeleted,
 };
 
 export default connect<DeleteModalDispatchProps, {}, DeleteModalOwnProps, {}>(

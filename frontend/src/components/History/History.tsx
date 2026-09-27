@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Check, X } from 'lucide-react';
-import { Card } from '../ui/card';
+import EmptyState from '../EmptyState/EmptyState';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import {
   Select,
   SelectContent,
@@ -35,20 +36,35 @@ interface HistoryProps {
 const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
   const [limit, setLimit] = useState<HistoryLimit>(25);
   const [history, setHistory] = useState<HistoryEntry[]>();
+  const [loadStatus, setLoadStatus] = useState<'loading' | 'loaded' | 'error'>(
+    'loading',
+  );
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoadStatus('loading');
     axios
       .get<HistoryEntry[]>('/api/history', { params: { limit } })
-      .then(({ data }) => setHistory(data))
-      .catch((err) =>
-        displayFlashError(err.response.data.message || err.response.data),
-      );
-  }, [limit, displayFlashError]);
+      .then(({ data }) => {
+        if (cancelled) return;
+        setHistory(data);
+        setLoadStatus('loaded');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadStatus('error');
+        displayFlashError(err.response.data.message || err.response.data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [limit, displayFlashError, retryCount]);
 
   return (
-    <Card className="overflow-x-auto p-5 shadow-[0_10px_35px_rgba(20,29,60,0.08)]">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h3 className="text-lg font-semibold">Query History</h3>
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle>Query History</CardTitle>
         <Select
           value={String(limit)}
           onValueChange={(value) => setLimit(Number(value) as HistoryLimit)}
@@ -66,55 +82,74 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
             <SelectItem value="100">100</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      {history && history.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No query history found - go nuts!
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Query</TableHead>
-              <TableHead className="text-center">Successful</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(history || []).map((entry) => (
-              <TableRow key={entry.id}>
-                <TableCell>
-                  {new Date(entry.queried_at).toLocaleString()}
-                </TableCell>
-                <TableCell>{entry.url_key}</TableCell>
-                <TableCell className="text-center">
-                  {entry.successful ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Check
-                          className="inline h-4 w-4 text-emerald-600"
-                          aria-label="Resolved successfully"
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>Resolved successfully</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <X
-                          className="inline h-4 w-4 text-destructive"
-                          aria-label="Did not resolve"
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>Did not resolve</TooltipContent>
-                    </Tooltip>
-                  )}
-                </TableCell>
+      </CardHeader>
+      <CardContent>
+        {loadStatus === 'loading' ? (
+          <EmptyState
+            title="Loading query history"
+            description="Your recent queries will appear here."
+            loading
+          />
+        ) : loadStatus === 'error' ? (
+          <EmptyState
+            title="Could not load query history"
+            description="Try again later. The request failed before the history could be loaded."
+            onRetry={() => setRetryCount((count) => count + 1)}
+          />
+        ) : history?.length === 0 ? (
+          <EmptyState
+            title="No query history yet"
+            description="Queries you make will appear here."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>Query</TableHead>
+                <TableHead className="text-center">Successful</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+            </TableHeader>
+            <TableBody>
+              {(history || []).map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell>
+                    {new Date(entry.queried_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>{entry.url_key}</TableCell>
+                  <TableCell className="text-center">
+                    {entry.successful ? (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Check
+                              className="inline h-4 w-4 text-secondary-foreground"
+                              aria-label="Resolved successfully"
+                            />
+                          }
+                        />
+                        <TooltipContent>Resolved successfully</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <X
+                              className="inline h-4 w-4 text-destructive"
+                              aria-label="Did not resolve"
+                            />
+                          }
+                        />
+                        <TooltipContent>Did not resolve</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
     </Card>
   );
 };

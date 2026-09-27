@@ -7,6 +7,7 @@ import {
 } from '../../redux/flash/actions';
 import { urlCreated, urlUpdated } from '../../redux/search/actions';
 import { Button } from '../ui/button';
+import { toast } from '../ui/toast';
 import {
   Dialog,
   DialogContent,
@@ -15,12 +16,14 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 interface EditModalProps {
   edit?: boolean;
   urlKey?: string;
   url?: string;
   onClose: () => void;
+  onDelete?: () => void;
   onCreated?: (data: any) => void;
   displayFlashSuccess: (message: string) => void;
   displayFlashError: (message: string) => void;
@@ -33,6 +36,7 @@ const EditModal: React.FC<EditModalProps> = ({
   urlKey: initialKey = '',
   url: initialUrl = '',
   onClose,
+  onDelete,
   onCreated,
   displayFlashSuccess,
   displayFlashError,
@@ -55,9 +59,18 @@ const EditModal: React.FC<EditModalProps> = ({
       data: { url: query.url },
     })
       .then(({ data }: any) => {
-        displayFlashSuccess(
-          `Successfully set ${data.key} to ${data.url || data.alias}`,
-        );
+        const successMessage = `Successfully set ${data.key} to ${
+          data.url || data.alias
+        }`;
+        if (edit) {
+          displayFlashSuccess(successMessage);
+        } else {
+          toast.add({
+            title: successMessage,
+            type: 'success',
+            timeout: 6000,
+          });
+        }
         // Update the displayed results without reloading the page
         if (edit) {
           urlUpdated(data);
@@ -96,16 +109,14 @@ const EditModal: React.FC<EditModalProps> = ({
             <DialogTitle>{edit ? `Edit ${urlKey}` : 'Add new URL'}</DialogTitle>
             <DialogDescription>
               {edit
-                ? `You are editing the link for "${urlKey}". Please remember that this will change the URL for everyone, so only do so if the URL is wrong.`
+                ? "Edit this URL's destination"
                 : 'Enter key and URL to add new link'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {!edit && (
               <div className="space-y-2">
-                <label htmlFor="key" className="text-sm font-medium">
-                  Key
-                </label>
+                <Label htmlFor="key">Key</Label>
                 <Input
                   id="key"
                   type="text"
@@ -116,9 +127,7 @@ const EditModal: React.FC<EditModalProps> = ({
               </div>
             )}
             <div className="space-y-2">
-              <label htmlFor="url" className="text-sm font-medium">
-                URL
-              </label>
+              <Label htmlFor="url">URL</Label>
               <Input
                 id="url"
                 type="text"
@@ -129,6 +138,18 @@ const EditModal: React.FC<EditModalProps> = ({
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
+            {onDelete && (
+              <Button
+                onClick={onDelete}
+                variant="destructive"
+                data-e2e="delete"
+                type="button"
+                disabled={isSubmitting}
+                className="mr-auto"
+              >
+                Delete
+              </Button>
+            )}
             <Button
               onClick={onClose}
               variant="outline"
