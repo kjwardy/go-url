@@ -1,8 +1,9 @@
-import { SEARCH, URL_CREATED, URL_UPDATED } from './constants';
+import { SEARCH, URL_CREATED, URL_UPDATED, URL_DELETED } from './constants';
 
 const initialState = {
   created: [] as any[],
   updated: [] as any[],
+  deleted: [] as string[],
   results: undefined as any,
 };
 
@@ -23,6 +24,7 @@ const reducer = (state = { ...initialState }, action: IAction) => {
       return {
         ...state,
         created: [action.data, ...(state.created || [])],
+        deleted: state.deleted.filter((key) => key !== action.data.key),
       };
     // Store the latest value for each updated URL
     case URL_UPDATED:
@@ -32,6 +34,14 @@ const reducer = (state = { ...initialState }, action: IAction) => {
           action.data,
           ...state.updated.filter((url) => url.key !== action.data.key),
         ],
+        deleted: state.deleted.filter((key) => key !== action.data.key),
+      };
+    case URL_DELETED:
+      return {
+        ...state,
+        created: state.created.filter((url) => url.key !== action.data),
+        updated: state.updated.filter((url) => url.key !== action.data),
+        deleted: [...new Set([...state.deleted, action.data])],
       };
     default:
       return state;
