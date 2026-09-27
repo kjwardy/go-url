@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Browser-generated `/.well-known/*` requests now return 404 without entering URL resolution or query history
 - Frontend development proxy no longer incorrectly rejects short links beginning with `go`
+- Metrics endpoint now handles empty query history without returning an internal server error
 
 ## [1.0.0] - 2026-09-19
 
