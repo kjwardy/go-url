@@ -53,6 +53,12 @@ func Init(e *echo.Echo, logger *logging.Logger) error {
 		})
 	})
 
+	// Return 404 for browser-generated .well-known requests
+	// This prevents them from entering URL resolution and query history
+	e.GET("/.well-known/*", func(c echo.Context) error {
+		return echo.NewHTTPError(http.StatusNotFound)
+	})
+
 	// Setup routes
 	e.GET("/opensearch.xml", h.Opensearch)
 	e.GET("/:key", h.Url)
