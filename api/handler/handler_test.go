@@ -1,6 +1,16 @@
 package handler
 
-import "testing"
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/kjwardy/go-url/api/logging"
+	"github.com/labstack/echo"
+)
 
 func TestValidateKey(t *testing.T) {
 	tables := []struct {
@@ -62,6 +72,43 @@ func TestValidateKeyPath(t *testing.T) {
 	for _, table := range tables {
 		if valid := ValidateKeyPath(table.key); valid != table.valid {
 			t.Errorf("Expected ValidateKeyPath(%q) to be %t", table.key, table.valid)
+		}
+	}
+}
+
+func TestWellKnownPathsReturn404(t *testing.T) {
+	var output bytes.Buffer
+	logger := logging.New(logging.Config{JSON: true, Output: &output})
+	e := echo.New()
+	e.Use(logger.Middleware())
+	e.GET("/.well-known/*", func(c echo.Context) error {
+		return echo.NewHTTPError(http.StatusNotFound)
+	})
+
+	paths := []string{
+		"/.well-known/appspecific/com.chrome.devtools.json",
+		"/.well-known/test",
+	}
+
+	for _, path := range paths {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("path %s: status = %d, want 404", path, rec.Code)
+		}
+	}
+
+	// Verify no URL-query events were emitted
+	scanner := bufio.NewScanner(&output)
+	for scanner.Scan() {
+		var entry map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
+			t.Fatalf("invalid JSON log: %v", err)
+		}
+		if entry["event.action"] == "go_url.query" {
+			t.Errorf("found unexpected go_url.query event in logs")
 		}
 	}
 }

@@ -29,7 +29,7 @@ The recommended way to test and deploy is using Docker. You will need to run bot
 **Start Postgres**
 
 ```sh
-docker run -d -P --name db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e POSTGRES_ADDR=db:5432 postgres:11.3-alpine
+docker run -d -P --name db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e POSTGRES_ADDR=db:5432 postgres:17
 ```
 
 **Start App**
