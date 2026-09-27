@@ -38,10 +38,7 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
   const trimmedQuery = query.trim();
   const isDebouncing = trimmedQuery !== debouncedQuery;
   const isOpen =
-    isFocused &&
-    trimmedQuery.length > 0 &&
-    !selectedResult &&
-    !deleteSelected;
+    isFocused && trimmedQuery.length > 0 && !selectedResult && !deleteSelected;
   const visibleResults = results.filter(
     (result) => !deleted.includes(result.key),
   );
@@ -107,10 +104,7 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
           }
         }}
       >
-        <Popover
-          open={isOpen}
-          onOpenChange={(open) => setIsFocused(open)}
-        >
+        <Popover open={isOpen} onOpenChange={(open) => setIsFocused(open)}>
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label="Search URLs"
