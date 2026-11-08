@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { connect } from 'react-redux';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
 import MostWanted from '../../components/MostWanted';
@@ -30,7 +30,13 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     'loading' | 'loaded' | 'error'
   >('loading');
   const [popularRetryCount, setPopularRetryCount] = useState(0);
+  const [querySearchResults, setQuerySearchResults] = useState<any[]>();
+  const [querySearchStatus, setQuerySearchStatus] = useState<
+    'loading' | 'loaded' | 'error'
+  >('loading');
+  const [querySearchRetryCount, setQuerySearchRetryCount] = useState(0);
   const location = useLocation();
+  const { query } = useParams<{ query?: string }>();
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +59,34 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
   }, [displayFlashError, popularRetryCount]);
 
   useEffect(() => {
+    if (!query) {
+      setQuerySearchResults(undefined);
+      setQuerySearchStatus('loaded');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setQuerySearchResults([]);
+    setQuerySearchStatus('loading');
+    axios
+      .get<any[]>('/api/search', { params: { q: query } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setQuerySearchResults(data);
+        setQuerySearchStatus('loaded');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setQuerySearchResults([]);
+        setQuerySearchStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query, querySearchRetryCount]);
+
+  useEffect(() => {
     const search = location.search;
     const { message } = qs.parse(search.slice(1));
     if (message) {
@@ -71,6 +105,9 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
   ];
   const updated = search.updated || [];
   const deleted = search.deleted || [];
+  const createdSearchResults = query
+    ? created.filter((result) => result.key.includes(query))
+    : [];
   // Replace matching rows while preserving view counts omitted by updates
   const applyUpdates = (results: any[]) =>
     results.map((result) => {
@@ -86,10 +123,40 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       (result) => !deleted.includes(result.key),
     ),
   );
+  const matchingResults = applyUpdates(
+    addCreated(querySearchResults || [], createdSearchResults),
+  ).filter((result) => !deleted.includes(result.key));
 
   return (
     <div className="mx-auto grid max-w-[1160px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,820px)_300px]">
       <main className="min-w-0">
+        {query && (
+          <div className="mb-6">
+            <Results
+              data={matchingResults}
+              title="Search Results"
+              emptyState={
+                querySearchStatus === 'loading'
+                  ? {
+                      title: 'Searching URLs',
+                      description: 'Matching URLs will appear here.',
+                      loading: true,
+                    }
+                  : querySearchStatus === 'error'
+                  ? {
+                      title: 'Search unavailable',
+                      description: 'Try again in a moment.',
+                      onRetry: () =>
+                        setQuerySearchRetryCount((count) => count + 1),
+                    }
+                  : {
+                      title: 'No matching URLs',
+                      description: 'Try a different search term.',
+                    }
+              }
+            />
+          </div>
+        )}
         <Tabs defaultValue="popular" aria-label="URL data views">
           <TabsList>
             <TabsTrigger value="popular">Most Popular</TabsTrigger>

@@ -2,8 +2,7 @@ import axios from 'axios';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
 import { Loader2, Search as SearchIcon } from 'lucide-react';
-import DeleteModal from '../DeleteModal';
-import EditModal from '../EditModal';
+import { useHistory } from 'react-router-dom';
 import { Input } from '../ui/input';
 import { Popover, PopoverContent } from '../ui/popover';
 
@@ -21,15 +20,10 @@ interface SearchProps {
 }
 
 const Search: React.FC<SearchProps> = ({ deleted }) => {
+  const history = useHistory();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
-    null,
-  );
-  const [deleteSelected, setDeleteSelected] = useState<SearchResult | null>(
-    null,
-  );
   const [searchStatus, setSearchStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
@@ -37,24 +31,20 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
   const formRef = useRef<HTMLFormElement>(null);
   const trimmedQuery = query.trim();
   const isDebouncing = trimmedQuery !== debouncedQuery;
-  const isOpen =
-    isFocused && trimmedQuery.length > 0 && !selectedResult && !deleteSelected;
+  const isOpen = isFocused && trimmedQuery.length > 0;
   const visibleResults = results.filter(
     (result) => !deleted.includes(result.key),
   );
-  const closeEdit = useCallback(() => {
-    setSelectedResult(null);
-    setIsFocused(false);
-  }, []);
-  const closeDelete = useCallback(() => {
-    setDeleteSelected(null);
-    setIsFocused(false);
-  }, []);
-  const startDelete = useCallback(() => {
-    if (!selectedResult) return;
-    setDeleteSelected(selectedResult);
-    setIsFocused(false);
-  }, [selectedResult]);
+
+  const searchFor = useCallback(
+    (searchQuery: string) => {
+      const trimmedSearchQuery = searchQuery.trim();
+      if (!trimmedSearchQuery) return;
+      history.push(`/${encodeURIComponent(trimmedSearchQuery)}`);
+      setIsFocused(false);
+    },
+    [history],
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(
@@ -98,10 +88,7 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
         className="relative w-full sm:ml-2 sm:w-auto"
         onSubmit={(event) => {
           event.preventDefault();
-          if (searchStatus === 'success' && visibleResults[0]) {
-            setSelectedResult(visibleResults[0]);
-            setIsFocused(false);
-          }
+          searchFor(trimmedQuery);
         }}
       >
         <Popover open={isOpen} onOpenChange={(open) => setIsFocused(open)}>
@@ -160,10 +147,7 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
                     <button
                       type="button"
                       className="block w-full border-b px-4 py-3 text-left last:border-b-0 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                      onClick={() => {
-                        setSelectedResult(result);
-                        setIsFocused(false);
-                      }}
+                      onClick={() => searchFor(result.key)}
                     >
                       <span className="block truncate text-sm font-medium">
                         {result.key}
@@ -181,27 +165,6 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
           </PopoverContent>
         </Popover>
       </form>
-      {selectedResult && !deleteSelected && (
-        <EditModal
-          edit
-          urlKey={selectedResult.key}
-          url={selectedResult.url || selectedResult.alias?.join(',') || ''}
-          onClose={closeEdit}
-          onDelete={startDelete}
-        />
-      )}
-      {deleteSelected && (
-        <DeleteModal
-          urlKey={deleteSelected.key}
-          onClose={closeDelete}
-          onDeleted={() => {
-            setResults((current) =>
-              current.filter((result) => result.key !== deleteSelected.key),
-            );
-            setSelectedResult(null);
-          }}
-        />
-      )}
     </>
   );
 };
