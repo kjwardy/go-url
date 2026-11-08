@@ -117,7 +117,7 @@ const Metrics: React.FC<MetricsProps> = ({ displayFlashError }) => {
             <h3 className="text-sm font-medium">Queries by day</h3>
             <div className="flex gap-3 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm bg-secondary" />
+                <span className="h-2 w-2 rounded-sm bg-green-600 dark:bg-green-400" />
                 Successful
               </span>
               <span className="inline-flex items-center gap-1">
@@ -152,7 +152,7 @@ const Metrics: React.FC<MetricsProps> = ({ displayFlashError }) => {
                         }}
                       />
                       <div
-                        className="min-h-0 shrink-0 bg-secondary"
+                        className="min-h-0 shrink-0 bg-green-600 dark:bg-green-400"
                         style={{
                           height: `${
                             (day.successful / maxDailyQueries) * 100
