@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
-import Snackbar from '@material-ui/core/Snackbar';
 import { clearFlash } from '../../redux/flash/actions';
-import SnackbarContentWrapper, { Variant } from './SnackbarContentWrapper';
+import { toast } from '../ui/toast';
+
+export type Variant = 'success' | 'warning' | 'error' | 'info';
 
 interface AlertProps {
   variant: Variant;
@@ -11,26 +12,18 @@ interface AlertProps {
 }
 
 const Alert = ({ variant, message, clearFlash }: AlertProps) => {
-  const onClose = (_: any, reason: string) =>
-    reason === 'clickaway' && clearFlash();
-  return (
-    <Snackbar
-      data-e2e="alert"
-      anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'center',
-      }}
-      open
-      autoHideDuration={6000}
-      onClose={onClose}
-    >
-      <SnackbarContentWrapper
-        onClose={onClose}
-        variant={variant}
-        message={message}
-      />
-    </Snackbar>
-  );
+  useEffect(() => {
+    toast.add({
+      id: 'flash-message',
+      title: message,
+      type: variant,
+      timeout: 6000,
+      priority: variant === 'error' ? 'high' : 'low',
+      onClose: clearFlash,
+    });
+  }, [clearFlash, message, variant]);
+
+  return null;
 };
 
 const mapDispatch = {

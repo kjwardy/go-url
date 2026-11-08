@@ -1,4 +1,4 @@
-import { SEARCH, URL_CREATED, URL_UPDATED } from './constants';
+import { SEARCH, URL_CREATED, URL_UPDATED, URL_DELETED } from './constants';
 
 // eslint-disable-next-line import/prefer-default-export
 export const searchResults = (data: any) => ({
@@ -14,4 +14,9 @@ export const urlCreated = (data: any) => ({
 export const urlUpdated = (data: any) => ({
   type: URL_UPDATED,
   data,
+});
+
+export const urlDeleted = (key: string) => ({
+  type: URL_DELETED,
+  data: key,
 });

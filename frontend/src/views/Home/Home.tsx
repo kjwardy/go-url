@@ -1,38 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { connect } from 'react-redux';
-import Paper from '@material-ui/core/Paper';
-import Tab from '@material-ui/core/Tab';
-import Tabs from '@material-ui/core/Tabs';
-import { useRouteMatch, useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import History from '../../components/History';
 import Metrics from '../../components/Metrics';
 import MostWanted from '../../components/MostWanted';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
-import useStyles from './useStyles';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../../components/ui/tabs';
 
 interface HomeProps {
   displayFlashError: (message: string) => void;
   search: {
-    results?: any[];
     created?: any[];
     updated?: any[];
+    deleted?: string[];
   };
 }
 
 const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
-  const [querySearchResults, setQuerySearchResults] = useState<any[]>();
   const [popular, setPopular] = useState<any[]>();
-  const [activeTab, setActiveTab] = useState(0);
-  const classes = useStyles({});
-  const match = useRouteMatch<{ query: string }>();
+  const [popularStatus, setPopularStatus] = useState<
+    'loading' | 'loaded' | 'error'
+  >('loading');
+  const [popularRetryCount, setPopularRetryCount] = useState(0);
+  const [querySearchResults, setQuerySearchResults] = useState<any[]>();
+  const [querySearchStatus, setQuerySearchStatus] = useState<
+    'loading' | 'loaded' | 'error'
+  >('loading');
+  const [querySearchRetryCount, setQuerySearchRetryCount] = useState(0);
   const location = useLocation();
+  const { query } = useParams<{ query?: string }>();
 
   useEffect(() => {
-    axios.get<any>('/api/popular').then(({ data }) => setPopular(data));
-  }, []);
+    let cancelled = false;
+    setPopularStatus('loading');
+    axios
+      .get<any[]>('/api/popular')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setPopular(data);
+        setPopularStatus('loaded');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPopularStatus('error');
+        displayFlashError(err.response.data.message || err.response.data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayFlashError, popularRetryCount]);
+
+  useEffect(() => {
+    if (!query) {
+      setQuerySearchResults(undefined);
+      setQuerySearchStatus('loaded');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setQuerySearchResults([]);
+    setQuerySearchStatus('loading');
+    axios
+      .get<any[]>('/api/search', { params: { q: query } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setQuerySearchResults(data);
+        setQuerySearchStatus('loaded');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setQuerySearchResults([]);
+        setQuerySearchStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query, querySearchRetryCount]);
 
   useEffect(() => {
     const search = location.search;
@@ -41,15 +93,6 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       displayFlashError(message as string);
     }
   }, [location.search, displayFlashError]);
-
-  useEffect(() => {
-    const query = match.params.query;
-    if (query) {
-      axios
-        .get<any>('/api/search', { params: { q: query } })
-        .then(({ data }) => setQuerySearchResults(data));
-    }
-  }, [match.params.query]);
 
   const created = search.created || [];
   // Place newly created URLs first and remove any duplicate API results
@@ -61,6 +104,10 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     ),
   ];
   const updated = search.updated || [];
+  const deleted = search.deleted || [];
+  const createdSearchResults = query
+    ? created.filter((result) => result.key.includes(query))
+    : [];
   // Replace matching rows while preserving view counts omitted by updates
   const applyUpdates = (results: any[]) =>
     results.map((result) => {
@@ -71,55 +118,83 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
     });
   const sortByViews = (results: any[]) =>
     [...results].sort((first, second) => second.views - first.views);
-  const searchResults = search.results || querySearchResults;
-  const createdSearchResults = match.params.query
-    ? created.filter((result) => result.key.includes(match.params.query))
-    : [];
+  const popularResults = sortByViews(
+    applyUpdates(addCreated(popular)).filter(
+      (result) => !deleted.includes(result.key),
+    ),
+  );
+  const matchingResults = applyUpdates(
+    addCreated(querySearchResults || [], createdSearchResults),
+  ).filter((result) => !deleted.includes(result.key));
 
   return (
-    <div className={classes.dashboard}>
-      <main className={classes.main}>
-        {searchResults && (
-          <div className={classes.container}>
+    <div className="mx-auto grid max-w-[1160px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,820px)_300px]">
+      <main className="min-w-0">
+        {query && (
+          <div className="mb-6">
             <Results
-              data={applyUpdates(
-                addCreated(searchResults, createdSearchResults),
-              )}
+              data={matchingResults}
               title="Search Results"
+              emptyState={
+                querySearchStatus === 'loading'
+                  ? {
+                      title: 'Searching URLs',
+                      description: 'Matching URLs will appear here.',
+                      loading: true,
+                    }
+                  : querySearchStatus === 'error'
+                  ? {
+                      title: 'Search unavailable',
+                      description: 'Try again in a moment.',
+                      onRetry: () =>
+                        setQuerySearchRetryCount((count) => count + 1),
+                    }
+                  : {
+                      title: 'No matching URLs',
+                      description: 'Try a different search term.',
+                    }
+              }
             />
           </div>
         )}
-        <Paper className={classes.tabs}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, value) => setActiveTab(value)}
-            indicatorColor="primary"
-            textColor="primary"
-            aria-label="URL data views"
-          >
-            <Tab label="Most Popular" />
-            <Tab label="Most Wanted" />
-            <Tab label="History" />
-          </Tabs>
-        </Paper>
-        {activeTab === 0 && (popular || created.length > 0) && (
-          <div className={classes.container}>
+        <Tabs defaultValue="popular" aria-label="URL data views">
+          <TabsList>
+            <TabsTrigger value="popular">Most Popular</TabsTrigger>
+            <TabsTrigger value="wanted">Most Wanted</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="popular">
             <Results
-              data={sortByViews(applyUpdates(addCreated(popular)))}
+              data={popularResults}
               title="Most Popular"
+              emptyState={
+                popularStatus === 'loading' && popularResults.length === 0
+                  ? {
+                      title: 'Loading popular URLs',
+                      description: 'The most popular URLs will appear here.',
+                      loading: true,
+                    }
+                  : popularStatus === 'error' && popularResults.length === 0
+                  ? {
+                      title: 'Could not load popular URLs',
+                      description:
+                        'Try again later. The request failed before the list could be loaded.',
+                      onRetry: () => setPopularRetryCount((count) => count + 1),
+                    }
+                  : {
+                      title: 'No popular URLs yet',
+                      description: 'Add a URL to get the list started.',
+                    }
+              }
             />
-          </div>
-        )}
-        {activeTab === 1 && (
-          <div className={classes.container}>
+          </TabsContent>
+          <TabsContent value="wanted">
             <MostWanted displayFlashError={displayFlashError} />
-          </div>
-        )}
-        {activeTab === 2 && (
-          <div className={classes.container}>
+          </TabsContent>
+          <TabsContent value="history">
             <History displayFlashError={displayFlashError} />
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
       <Metrics displayFlashError={displayFlashError} />
     </div>

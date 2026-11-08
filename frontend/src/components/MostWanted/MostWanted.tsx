@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import Paper from '@material-ui/core/Paper';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import IconButton from '@material-ui/core/IconButton';
-import EditIcon from '@material-ui/icons/Edit';
+import { Pencil } from 'lucide-react';
 import EditModal from '../EditModal';
-import useStyles from './useStyles';
+import EmptyState from '../EmptyState/EmptyState';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 
 interface MostWantedEntry {
   query: string;
@@ -23,14 +26,21 @@ interface MostWantedProps {
 const MostWanted: React.FC<MostWantedProps> = ({ displayFlashError }) => {
   const [mostWanted, setMostWanted] = useState<MostWantedEntry[]>();
   const [selected, setSelected] = useState<MostWantedEntry>();
-  const classes = useStyles({});
+  const [loadStatus, setLoadStatus] = useState<'loading' | 'loaded' | 'error'>(
+    'loading',
+  );
   const fetchMostWanted = useCallback(() => {
+    setLoadStatus('loading');
     axios
       .get<MostWantedEntry[]>('/api/most-wanted')
-      .then(({ data }) => setMostWanted(data))
-      .catch((err) =>
-        displayFlashError(err.response.data.message || err.response.data),
-      );
+      .then(({ data }) => {
+        setMostWanted(data);
+        setLoadStatus('loaded');
+      })
+      .catch((err) => {
+        setLoadStatus('error');
+        displayFlashError(err.response.data.message || err.response.data);
+      });
   }, [displayFlashError]);
 
   useEffect(() => {
@@ -38,7 +48,7 @@ const MostWanted: React.FC<MostWantedProps> = ({ displayFlashError }) => {
   }, [fetchMostWanted]);
 
   return (
-    <Paper className={classes.paper}>
+    <Card>
       {selected && (
         <EditModal
           urlKey={selected.query}
@@ -50,38 +60,58 @@ const MostWanted: React.FC<MostWantedProps> = ({ displayFlashError }) => {
           }}
         />
       )}
-      <h3>Most Wanted</h3>
-      {mostWanted && mostWanted.length === 0 ? (
-        <p>No unresolved queries found - go nuts!</p>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Query</TableCell>
-              <TableCell align="right">Views</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(mostWanted || []).map((entry) => (
-              <TableRow key={entry.query}>
-                <TableCell>{entry.query}</TableCell>
-                <TableCell align="right">{entry.views}</TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    aria-label={`Add URL for ${entry.query}`}
-                    className={classes.editButton}
-                    onClick={() => setSelected(entry)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </TableCell>
+      <CardHeader>
+        <CardTitle>Most Wanted</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loadStatus === 'loading' ? (
+          <EmptyState
+            title="Loading unresolved queries"
+            description="Queries without matching URLs will appear here."
+            loading
+          />
+        ) : loadStatus === 'error' ? (
+          <EmptyState
+            title="Could not load unresolved queries"
+            description="Try again later. The request failed before the list could be loaded."
+            onRetry={fetchMostWanted}
+          />
+        ) : mostWanted?.length === 0 ? (
+          <EmptyState
+            title="No unresolved queries"
+            description="Queries without matching URLs will appear here."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Query</TableHead>
+                <TableHead className="text-right">Views</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </Paper>
+            </TableHeader>
+            <TableBody>
+              {mostWanted?.map((entry) => (
+                <TableRow key={entry.query}>
+                  <TableCell>{entry.query}</TableCell>
+                  <TableCell className="text-right">{entry.views}</TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Add URL for ${entry.query}`}
+                      onClick={() => setSelected(entry)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

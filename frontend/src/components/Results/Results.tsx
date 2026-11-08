@@ -1,18 +1,19 @@
 import React, { useState, useCallback } from 'react';
-import DeleteIcon from '@material-ui/icons/Delete';
-import EditIcon from '@material-ui/icons/Edit';
-import IconButton from '@material-ui/core/IconButton';
-import LaunchIcon from '@material-ui/icons/Launch';
-import Paper from '@material-ui/core/Paper';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
+import { ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 
 import DeleteModal from '../DeleteModal';
 import EditModal from '../EditModal';
-import useStyles from './useStyles';
+import EmptyState from '../EmptyState/EmptyState';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 
 interface IResult {
   key: string;
@@ -24,16 +25,21 @@ interface IResult {
 interface ResultsProps {
   data: IResult[];
   title: string;
+  emptyState?: {
+    title: string;
+    description: string;
+    loading?: boolean;
+    onRetry?: () => void;
+  };
 }
 
-const Results: React.FC<ResultsProps> = ({ data, title }) => {
+const Results: React.FC<ResultsProps> = ({ data, title, emptyState }) => {
   const [selected, setSelected] = useState<IResult | null>(null);
   const [deleteSelected, setDeleteSelected] = useState<IResult | null>(null);
   // Track deleted keys locally so rows disappear without reloading the page
   const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
   const clearSelected = useCallback(() => setSelected(null), []);
   const clearDeleteSelected = useCallback(() => setDeleteSelected(null), []);
-  const classes = useStyles({});
   const results = data.filter((result) => !deletedKeys.includes(result.key));
 
   const getFormattedUrl = (url: string) => {
@@ -41,7 +47,7 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
     const parts = url.split(regex);
     return parts.map((part, i) =>
       part.match(regex) ? (
-        <span key={i} className={classes.urlReplace}>
+        <span key={i} className="font-bold text-foreground">
           {part}
         </span>
       ) : (
@@ -69,71 +75,92 @@ const Results: React.FC<ResultsProps> = ({ data, title }) => {
         />
       )}
 
-      <Paper className={classes.paper} data-e2e={title}>
-        <h3>{title}</h3>
-        {!results.length ? (
-          <p>No results found. Help others by adding it.</p>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Key</TableCell>
-                <TableCell>Url</TableCell>
-                <TableCell align="right">Views</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {results.map((r) => (
-                <TableRow key={r.key} className={classes.tableRow}>
-                  <TableCell>{r.key}</TableCell>
-                  <TableCell className={classes.urlCell}>
-                    {r.alias && r.alias.length ? (
-                      r.alias.map((alias) => (
-                        <a
-                          key={alias}
-                          className={classes.url}
-                          href={`/${encodeURIComponent(alias)}`}
-                        >
-                          {alias}
-                          <LaunchIcon className={classes.launchIcon} />
-                        </a>
-                      ))
-                    ) : (
-                      <a
-                        className={classes.url}
-                        href={`/${encodeURIComponent(r.key)}`}
-                      >
-                        {getFormattedUrl(r.url)}
-                        <LaunchIcon className={classes.launchIcon} />
-                      </a>
-                    )}
-                  </TableCell>
-                  <TableCell align="right">{r.views}</TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      className={classes.actionIcon}
-                      onClick={() => setSelected(r)}
-                      aria-label={`Edit ${r.key}`}
-                      data-e2e="edit"
-                    >
-                      <EditIcon className={classes.edit} />
-                    </IconButton>
-                    <IconButton
-                      className={classes.actionIcon}
-                      onClick={() => setDeleteSelected(r)}
-                      aria-label={`Delete ${r.key}`}
-                      data-e2e="delete"
-                    >
-                      <DeleteIcon className={classes.delete} />
-                    </IconButton>
-                  </TableCell>
+      <Card data-e2e={title}>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!results.length ? (
+            <EmptyState
+              title={emptyState?.title || 'No results found'}
+              description={
+                emptyState?.description || 'Help others by adding it.'
+              }
+              loading={emptyState?.loading}
+              onRetry={emptyState?.onRetry}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Key</TableHead>
+                  <TableHead>Url</TableHead>
+                  <TableHead className="text-right">Views</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Paper>
+              </TableHeader>
+              <TableBody>
+                {results.map((r) => (
+                  <TableRow key={r.key}>
+                    <TableCell>{r.key}</TableCell>
+                    <TableCell className="max-w-[300px] break-words max-sm:max-w-[100px]">
+                      {r.alias && r.alias.length ? (
+                        r.alias.map((alias) => (
+                          <a
+                            key={alias}
+                            className="font-medium text-primary hover:underline"
+                            href={`/${encodeURIComponent(alias)}`}
+                          >
+                            {alias}
+                            <ArrowUpRight
+                              aria-hidden="true"
+                              className="ml-0.5 inline h-3 w-3"
+                            />
+                          </a>
+                        ))
+                      ) : (
+                        <a
+                          className="font-medium text-primary hover:underline"
+                          href={`/${encodeURIComponent(r.key)}`}
+                        >
+                          {getFormattedUrl(r.url)}
+                          <ArrowUpRight
+                            aria-hidden="true"
+                            className="ml-0.5 inline h-3 w-3"
+                          />
+                        </a>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{r.views}</TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-primary"
+                        onClick={() => setSelected(r)}
+                        aria-label={`Edit ${r.key}`}
+                        data-e2e="edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive"
+                        onClick={() => setDeleteSelected(r)}
+                        aria-label={`Delete ${r.key}`}
+                        data-e2e="delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

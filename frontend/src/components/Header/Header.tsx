@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
-import AppBar from '@material-ui/core/AppBar';
-import IconButton from '@material-ui/core/IconButton';
-import Tooltip from '@material-ui/core/Tooltip';
-import Toolbar from '@material-ui/core/Toolbar';
-import Typography from '@material-ui/core/Typography';
-import Brightness4Icon from '@material-ui/icons/Brightness4';
-import Brightness7Icon from '@material-ui/icons/Brightness7';
-import ExitToAppIcon from '@material-ui/icons/ExitToApp';
+import { LogOut, Moon, Sun } from 'lucide-react';
 import Search from '../Search';
-import useStyles from './useStyles';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface HeaderProps {
-  onSearch: (query: string) => void;
   mode: 'light' | 'dark';
   onToggleMode: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSearch, mode, onToggleMode }) => {
+const Header: React.FC<HeaderProps> = ({ mode, onToggleMode }) => {
   const [name, setName] = useState('');
   useEffect(() => {
     const name = Cookies.get('user');
@@ -25,53 +18,73 @@ const Header: React.FC<HeaderProps> = ({ onSearch, mode, onToggleMode }) => {
       setName(name);
     }
   }, []);
-  const classes = useStyles({});
-
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <a className={classes.link} href="/go">
-          <img
-            src={process.env.PUBLIC_URL + '/logo.svg'}
-            alt="Go URL Logo"
-            className={classes.logo}
-          />
-          <Typography variant="h6" color="inherit">
-            Go
-          </Typography>
-        </a>
-        <a className={`${classes.link} ${classes.linkSecondary}`} href="/help">
-          Help
-        </a>
-        <div className={classes.grow} />
-        <Search onSearch={onSearch} />
-        <Tooltip
-          title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
-        >
-          <IconButton
-            color="inherit"
-            aria-label="Toggle dark mode"
-            data-e2e="theme-toggle"
-            onClick={onToggleMode}
+    <header className="border-b bg-primary text-primary-foreground dark:bg-card dark:text-card-foreground">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-4 sm:px-6">
+        <Button
+          variant="ghost"
+          render={
+            <a href="/go" className="shrink-0 font-semibold">
+              <img
+                src={process.env.PUBLIC_URL + '/logo.svg'}
+                alt=""
+                className="mr-2 h-8"
+              />
+              Go
+            </a>
+          }
+        />
+        <Button variant="ghost" render={<a href="/help">Help</a>} />
+        <div className="flex-1" />
+        <Search />
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label="Toggle dark mode"
+                data-e2e="theme-toggle"
+                onClick={onToggleMode}
+              />
+            }
           >
-            {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
-          </IconButton>
+            {mode === 'light' ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+          </TooltipTrigger>
+          <TooltipContent>
+            Switch to {mode === 'light' ? 'dark' : 'light'} mode
+          </TooltipContent>
         </Tooltip>
 
         {name && (
           <>
-            <span className={classes.name}>{name}</span>
-            <form method="post" action="/logout" className={classes.logout}>
-              <Tooltip title="Log out">
-                <IconButton color="inherit" aria-label="Log out" type="submit">
-                  <ExitToAppIcon />
-                </IconButton>
+            <span className="ml-2 text-sm font-medium">{name}</span>
+            <form method="post" action="/logout" className="ml-1 flex">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Log out"
+                      type="submit"
+                    />
+                  }
+                >
+                  <LogOut className="h-5 w-5" />
+                </TooltipTrigger>
+                <TooltipContent>Log out</TooltipContent>
               </Tooltip>
             </form>
           </>
         )}
-      </Toolbar>
-    </AppBar>
+      </div>
+    </header>
   );
 };
 
