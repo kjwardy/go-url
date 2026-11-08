@@ -86,11 +86,24 @@ func RequestID(c echo.Context) string {
 }
 
 func (l *Logger) AuthenticationFailure(requestID, provider, errorType string) {
-	fields := l.base("WARN", "Authentication failed", "authentication", time.Now().UTC())
-	fields["event.outcome"] = "failure"
-	fields["http.request.id"] = requestID
-	fields["auth.provider"] = provider
-	fields["error.type"] = errorType
+	l.Event("WARN", "Authentication failed", "authentication", "failure", map[string]interface{}{
+		"http.request.id": requestID,
+		"auth.provider":   provider,
+		"error.type":      errorType,
+	})
+}
+
+func (l *Logger) Event(level, message, action, result string, attributes map[string]interface{}) {
+	fields := l.base(level, message, action, time.Now().UTC())
+	fields["event.outcome"] = result
+	for key, value := range attributes {
+		switch key {
+		case "@timestamp", "ecs.version", "log.level", "message", "event.action", "event.outcome", "service.name", "service.version", "service.environment":
+			continue
+		default:
+			fields[key] = value
+		}
+	}
 	l.write(fields)
 }
 
@@ -167,7 +180,7 @@ func (l *Logger) write(fields map[string]interface{}) {
 	}
 	_, _ = fmt.Fprintf(l.output, "%s %s %s", fields["@timestamp"], fields["log.level"], fields["message"])
 	// Append relevant fields in key=value format
-	for _, key := range []string{"event.action", "event.category", "event.type", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "error.type", "error.message"} {
+	for _, key := range []string{"event.action", "event.category", "event.type", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "database.system", "database.operation", "slack.operation", "background.task", "application.component", "server.port", "error.type", "error.message"} {
 		if value, ok := fields[key]; ok {
 			_, _ = fmt.Fprintf(l.output, " %s=%v", humanKey(key), value)
 		}
@@ -189,6 +202,18 @@ func humanKey(key string) string {
 		return "key"
 	case "go_url.query.successful":
 		return "successful"
+	case "database.operation":
+		return "database_operation"
+	case "database.system":
+		return "database_system"
+	case "slack.operation":
+		return "slack_operation"
+	case "background.task":
+		return "task"
+	case "application.component":
+		return "component"
+	case "server.port":
+		return "port"
 	case "event.action":
 		return "event"
 	case "event.outcome":

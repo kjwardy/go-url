@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-pg/pg"
 	"github.com/kjwardy/go-url/api/db"
-	"github.com/labstack/gommon/log"
 )
 
 // URL model
@@ -103,10 +102,6 @@ func (u *URL) IncrementViewCount(keys []string) error {
 		}
 		return tx.Insert(&queries)
 	})
-	if err != nil {
-		log.Error("Error while recording URL queries")
-		log.Error(err)
-	}
 	return err
 }
 
@@ -191,10 +186,6 @@ func (u *URLQuery) IncrementInvalidViewCount(keys []string) error {
 		}
 		return tx.Insert(&queries)
 	})
-	if err != nil {
-		log.Error("Error while recording invalid URL queries")
-		log.Error(err)
-	}
 	return err
 }
 

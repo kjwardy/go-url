@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -218,12 +217,12 @@ func contains(values []string, expected string) bool {
 var config = Config{}
 
 // Init loads the config from the env and sets defaults
-func Init() {
+func Init() error {
 	var spec Specification
 
 	err := envconfig.Process("", &spec)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	config.Debug = spec.Debug
 	config.Port = spec.Port
@@ -286,8 +285,9 @@ func Init() {
 	config.BlockedHosts = append(spec.BlockedHosts, spec.Hosts...)
 
 	if err := Validate(config); err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 // GetConfig returns the config
