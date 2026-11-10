@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - ECS event category and type fields for HTTP request and URL query logs
 - Structured lifecycle, database, authentication, Slack command, and background-task log events with sanitized failure details
 - Docker Compose and `docker run` log rotation limits, with Docker driver and Kubernetes log-management guidance
+- Elastic Agent and OpenTelemetry Collector examples for collecting and mapping structured stdout logs
 
 ### Changed
 
