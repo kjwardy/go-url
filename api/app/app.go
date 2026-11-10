@@ -26,9 +26,16 @@ func Init(e *echo.Echo, logger *logging.Logger) error {
 	if appConfig.Auth.Enabled {
 		manager, err := auth.NewManager(context.Background(), appConfig.Auth, appConfig.AppURI, logger)
 		if err != nil {
+			logger.Event("ERROR", "Authentication provider initialization failed", "authentication", "failure", map[string]interface{}{
+				"auth.provider": appConfig.Auth.Provider,
+				"error.type":    "provider_initialization_error",
+			})
 			return err
 		}
 		h.Auth = manager
+		logger.Event("INFO", "Authentication provider initialized", "authentication", "success", map[string]interface{}{
+			"auth.provider": appConfig.Auth.Provider,
+		})
 		manager.RegisterRoutes(e)
 	}
 
@@ -82,7 +89,7 @@ func Init(e *echo.Echo, logger *logging.Logger) error {
 	setupTemplates(e)
 
 	if appConfig.Slack.Token != "" {
-		s := &slackbot.SlackBot{}
+		s := &slackbot.SlackBot{Logger: logger}
 		go s.Init()
 	}
 	return nil

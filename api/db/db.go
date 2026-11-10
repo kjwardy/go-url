@@ -1,9 +1,8 @@
 package db
 
 import (
-	"log"
-
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
 
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
@@ -20,7 +19,7 @@ type URL struct {
 }
 
 // Init sets up DB connection
-func Init() {
+func Init(logger *logging.Logger) error {
 	appConfig := config.GetConfig()
 
 	db := pg.Connect(&pg.Options{
@@ -32,8 +31,21 @@ func Init() {
 
 	database = db
 
-	createSchema()
-
+	if err := createSchema(logger); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			logger.Event("ERROR", "Database connection cleanup failed", "database.connection", "failure", map[string]interface{}{
+				"database.system":    "postgresql",
+				"database.operation": "close_after_schema_failure",
+				"error.type":         "database_error",
+			})
+		}
+		database = nil
+		return err
+	}
+	logger.Event("INFO", "Database schema initialized", "database.schema", "success", map[string]interface{}{
+		"database.system": "postgresql",
+	})
+	return nil
 }
 
 // GetDB will return the active database connection
@@ -42,13 +54,13 @@ func GetDB() *pg.DB {
 }
 
 // setupTables creates the required tables and sets up indexes
-func createSchema() {
+func createSchema(logger *logging.Logger) error {
 	url := URL{}
 	err := database.CreateTable(&url, &orm.CreateTableOptions{
 		IfNotExists: true,
 	})
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "create_urls_table", err); err != nil {
+		return err
 	}
 
 	_, err = database.Exec(`
@@ -57,8 +69,8 @@ func createSchema() {
 			views bigint NOT NULL DEFAULT 0
 		)
 	`)
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "create_invalid_queries_table", err); err != nil {
+		return err
 	}
 
 	_, err = database.Exec(`
@@ -69,8 +81,8 @@ func createSchema() {
 			successful boolean NOT NULL DEFAULT true
 		)
 	`)
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "create_url_queries_table", err); err != nil {
+		return err
 	}
 
 	_, err = database.Exec(`
@@ -79,23 +91,36 @@ func createSchema() {
 		ALTER TABLE url_queries
 			DROP CONSTRAINT IF EXISTS url_queries_url_key_fkey
 	`)
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "migrate_url_queries_table", err); err != nil {
+		return err
 	}
 
 	_, err = database.Exec(`
 		CREATE INDEX IF NOT EXISTS url_queries_url_key_queried_at_idx
 		ON url_queries (url_key, queried_at)
 	`)
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "create_url_queries_key_index", err); err != nil {
+		return err
 	}
 
 	_, err = database.Exec(`
 		CREATE INDEX IF NOT EXISTS url_queries_queried_at_idx
 		ON url_queries (queried_at)
 	`)
-	if err != nil {
-		log.Fatal(err)
+	if err := schemaError(logger, "create_url_queries_time_index", err); err != nil {
+		return err
 	}
+	return nil
+}
+
+func schemaError(logger *logging.Logger, operation string, err error) error {
+	if err == nil {
+		return nil
+	}
+	logger.Event("ERROR", "Database schema initialization failed", "database.schema", "failure", map[string]interface{}{
+		"database.system":    "postgresql",
+		"database.operation": operation,
+		"error.type":         "database_error",
+	})
+	return err
 }

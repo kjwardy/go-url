@@ -154,6 +154,19 @@ func TestSuccessfulQueryLogCategorization(t *testing.T) {
 	assertEqual(t, entry["log.level"], "INFO")
 }
 
+func TestAuthenticationFailureLog(t *testing.T) {
+	var output bytes.Buffer
+	logger := New(Config{JSON: true, Output: &output})
+	logger.AuthenticationFailure("request-123", "oidc", "invalid_state")
+
+	entry := decodeEntry(t, output.Bytes())
+	assertEqual(t, entry["event.action"], "authentication")
+	assertEqual(t, entry["event.outcome"], "failure")
+	assertEqual(t, entry["auth.provider"], "oidc")
+	assertEqual(t, entry["http.request.id"], "request-123")
+	assertEqual(t, entry["error.type"], "invalid_state")
+}
+
 func TestInternalErrorIsSanitized(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(Config{JSON: true, Output: &output})
@@ -181,8 +194,62 @@ func TestHumanReadableOutput(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(Config{Output: &output})
 	logger.Query("request-123", "handbook", true)
+	logger.Event("INFO", "Application stopped", "application.shutdown", "success", map[string]interface{}{
+		"application.component": "http_server",
+	})
 	if got := output.String(); !strings.Contains(got, "INFO URL query resolved") || !strings.Contains(got, "request_id=request-123") || !strings.Contains(got, "key=handbook") {
 		t.Errorf("unexpected human-readable output: %s", got)
+	}
+	if got := output.String(); !strings.Contains(got, "INFO Application stopped") || !strings.Contains(got, "event=application.shutdown") || !strings.Contains(got, "outcome=success") || !strings.Contains(got, "component=http_server") {
+		t.Errorf("application event missing from human-readable output: %s", got)
+	}
+}
+
+func TestApplicationEventLogs(t *testing.T) {
+	tests := []struct {
+		action  string
+		outcome string
+	}{
+		{action: "application.startup", outcome: "success"},
+		{action: "application.startup", outcome: "failure"},
+		{action: "application.shutdown", outcome: "success"},
+		{action: "application.shutdown", outcome: "failure"},
+		{action: "application.panic", outcome: "failure"},
+		{action: "database.schema", outcome: "success"},
+		{action: "database.schema", outcome: "failure"},
+		{action: "database.connection", outcome: "failure"},
+		{action: "authentication", outcome: "success"},
+		{action: "authentication", outcome: "failure"},
+		{action: "slack.command", outcome: "success"},
+		{action: "slack.command", outcome: "failure"},
+		{action: "slack.bot", outcome: "success"},
+		{action: "slack.bot", outcome: "failure"},
+		{action: "background.task", outcome: "success"},
+		{action: "background.task", outcome: "failure"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.action+"/"+test.outcome, func(t *testing.T) {
+			var output bytes.Buffer
+			logger := New(Config{JSON: true, Output: &output})
+			logger.Event("INFO", "Operation completed", test.action, test.outcome, map[string]interface{}{
+				"application.component": "test",
+				"database.operation":    "initialize",
+				"slack.operation":       "command",
+				"background.task":       "test_task",
+			})
+
+			entry := decodeEntry(t, output.Bytes())
+			assertEqual(t, entry["event.action"], test.action)
+			assertEqual(t, entry["event.outcome"], test.outcome)
+			assertEqual(t, entry["message"], "Operation completed")
+			assertEqual(t, entry["service.name"], "go-url-api")
+			for _, field := range []string{"@timestamp", "ecs.version", "log.level"} {
+				if _, ok := entry[field]; !ok {
+					t.Errorf("missing common field %q", field)
+				}
+			}
+		})
 	}
 }
 

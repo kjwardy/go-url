@@ -70,7 +70,9 @@ func (h *Handler) Url(c echo.Context) (err error) {
 
 	if len(keys) != len(u) {
 		missing := h.getSetDifference(keys, u)
-		go urlQueryModel.IncrementInvalidViewCount(missing)
+		go func() {
+			h.logBackgroundResult("record_unresolved_queries", urlQueryModel.IncrementInvalidViewCount(missing))
+		}()
 		if c.Request().Header.Get("Content-Type") != "application/json" {
 			message := fmt.Sprintf("/go/%s?message=%s was not found in the database", missing[0], strings.Join(missing, ", "))
 			return c.Redirect(http.StatusTemporaryRedirect, message)
@@ -94,7 +96,10 @@ func (h *Handler) Url(c echo.Context) (err error) {
 		}
 	}
 	if len(aliases) > 0 {
-		aliasUrls, _ := urlModel.GetUrlsFromKeys(aliases)
+		aliasUrls, err := urlModel.GetUrlsFromKeys(aliases)
+		if err != nil {
+			return err
+		}
 		for _, u3 := range aliasUrls {
 			resolvedUrls = append(resolvedUrls, u3.URL)
 		}
@@ -102,7 +107,10 @@ func (h *Handler) Url(c echo.Context) (err error) {
 
 	// Increment the view count in the background as we don't want to delay the user
 	// and even if it fails, it shouldn't stop the redirect
-	go urlModel.IncrementViewCount(keys)
+	backgroundKeys := append([]string(nil), keys...)
+	go func() {
+		h.logBackgroundResult("record_successful_queries", urlModel.IncrementViewCount(backgroundKeys))
+	}()
 
 	if len(resolvedUrls) > 1 {
 		firstURL := resolvedUrls[0]
@@ -155,7 +163,6 @@ func (h *Handler) validateUrl(c echo.Context) (*model.URL, error) {
 	}
 
 	if err := c.Bind(u); err != nil {
-		fmt.Println("Error binding")
 		return nil, err
 	}
 

@@ -22,6 +22,16 @@ var (
 	validateKeyPathRegexp = regexp.MustCompile("^[\\w-]+( +[\\w-]+)*(\\/[\\w-]+( +[\\w-]+)*)*$")
 )
 
+func (h *Handler) logBackgroundResult(task string, err error) {
+	if err == nil || h.Logger == nil {
+		return
+	}
+	h.Logger.Event("ERROR", "Background task failed", "background.task", "failure", map[string]interface{}{
+		"background.task": task,
+		"error.type":      "database_error",
+	})
+}
+
 // ValidateKey validates a key against the required format
 func ValidateKey(key string) bool {
 	return validateKeyRegexp.MatchString(key)

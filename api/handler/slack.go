@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/labstack/echo"
 )
 
@@ -54,6 +54,12 @@ type SlackSecretsVerifier struct {
 	signingSecret string
 }
 
+var (
+	errSlackBodyRead  = errors.New("slack request body could not be read")
+	errSlackSignature = errors.New("slack request signature is invalid")
+	errSlackTeam      = errors.New("slack team is not allowed")
+)
+
 func verifySignedSecret(v *SlackSecretsVerifier) bool {
 	message := fmt.Sprintf("v0:%v:%v", v.timeStamp, string(v.rawBody))
 	expectedMAC := v.slackSig
@@ -74,9 +80,7 @@ func verifySlackTeam(payload *SlackPayload) error {
 	appConfig := config.GetConfig()
 	teamID := appConfig.Slack.TeamID
 	if teamID != "" && teamID != payload.TeamID {
-		err := fmt.Sprintf("TeamID: %s does not match required TeamID: %s - Blocking", payload.TeamID, teamID)
-		log.Print(err)
-		return errors.New(err)
+		return errSlackTeam
 	}
 	return nil
 }
@@ -86,30 +90,47 @@ func verifySlackRequest(r *http.Request) error {
 	buf, err := ioutil.ReadAll(r.Body)
 	body := ioutil.NopCloser(bytes.NewBuffer(buf))
 	if err != nil {
-		log.Printf("[ERROR] Failed to read request body: %s", err)
-		return errors.New("Failed to read body")
+		return errSlackBodyRead
 	}
 	r.Body = body
 	appConfig := config.GetConfig()
 
 	v := SlackSecretsVerifier{
 		rawBody:       buf,
-		slackSig:      r.Header["X-Slack-Signature"][0],
-		timeStamp:     r.Header["X-Slack-Request-Timestamp"][0],
+		slackSig:      r.Header.Get("X-Slack-Signature"),
+		timeStamp:     r.Header.Get("X-Slack-Request-Timestamp"),
 		signingSecret: appConfig.Slack.SigningSecret,
 	}
 
 	if !verifySignedSecret(&v) {
-		log.Printf("Invalid signing secret")
-		return errors.New("invalid signing secret")
+		return errSlackSignature
 	}
 	return nil
+}
+
+func (h *Handler) logSlackCommand(c echo.Context, level, message, result, errorType string) {
+	if h.Logger == nil {
+		return
+	}
+	fields := map[string]interface{}{
+		"http.request.id": logging.RequestID(c),
+		"slack.operation": "command",
+	}
+	if errorType != "" {
+		fields["error.type"] = errorType
+	}
+	h.Logger.Event(level, message, "slack.command", result, fields)
 }
 
 // SlackCommand responds to slack go command
 func (h *Handler) SlackCommand(c echo.Context) error {
 	// Reading request breaks rest
 	if err := verifySlackRequest(c.Request()); err != nil {
+		errorType := "invalid_signature"
+		if errors.Is(err, errSlackBodyRead) {
+			errorType = "request_body_read_error"
+		}
+		h.logSlackCommand(c, "WARN", "Slack command authentication failed", "failure", errorType)
 		return c.JSON(http.StatusUnauthorized, "Unauthorized")
 	}
 	response := new(SlackResponse)
@@ -117,22 +138,31 @@ func (h *Handler) SlackCommand(c echo.Context) error {
 	//urlModel.Find()
 	payload := new(SlackPayload)
 	if err := c.Bind(payload); err != nil {
+		h.logSlackCommand(c, "WARN", "Slack command payload is invalid", "failure", "invalid_payload")
 		response.Text = "An error occurred while processing your request"
 		return c.JSON(http.StatusOK, response)
 	}
 
 	if err := verifySlackTeam(payload); err != nil {
+		h.logSlackCommand(c, "WARN", "Slack command team is not allowed", "failure", "team_not_allowed")
 		return c.JSON(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	key := payload.Text
 	if ValidateKeyPath(key) == false {
+		h.logSlackCommand(c, "WARN", "Slack command key is invalid", "failure", "invalid_key")
 		response.Text = "The URL key you provided is an invalid format. You can only provide one key at a time, e.g. `/go help`"
 		return c.JSON(http.StatusOK, response)
 	}
 	appURI := config.GetConfig().AppURI
 	urls, err := urlModel.GetUrlsFromKeys([]string{key})
-	if err != nil || len(urls) == 0 {
+	if err != nil {
+		h.logSlackCommand(c, "ERROR", "Slack command URL lookup failed", "failure", "database_error")
+		response.Text = fmt.Sprintf("The URL key you provided was not found. Why not add it? %s/go/%s", appURI, key)
+		return c.JSON(http.StatusOK, response)
+	}
+	if len(urls) == 0 {
+		h.logSlackCommand(c, "INFO", "Slack command URL was not found", "failure", "url_not_found")
 		response.Text = fmt.Sprintf("The URL key you provided was not found. Why not add it? %s/go/%s", appURI, key)
 		return c.JSON(http.StatusOK, response)
 	}
@@ -151,5 +181,6 @@ func (h *Handler) SlackCommand(c echo.Context) error {
 			Footer: url.URL,
 		}}
 	}
+	h.logSlackCommand(c, "INFO", "Slack command completed", "success", "")
 	return c.JSON(http.StatusOK, response)
 }

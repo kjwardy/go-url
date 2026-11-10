@@ -1,6 +1,6 @@
 # API Logging Schema
 
-This document describes the implemented JSON schema for API logs written to stdout. Structured request, URL query, and authentication failure events are available when `JSON_LOGS=true`.
+This document describes the implemented JSON schema for application logs written to stdout. Structured request, URL query, lifecycle, database, authentication, Slack, and background-task events are available when `JSON_LOGS=true`.
 
 The application emits Elastic Common Schema (ECS)-shaped JSON because Elastic Agent is the expected initial consumer. The selected fields either match OpenTelemetry semantic conventions directly or have a documented mapping to the OpenTelemetry Logs Data Model. Fields specific to `go-url` use the `go_url.*` namespace.
 
@@ -23,6 +23,14 @@ ECS and OpenTelemetry semantic conventions are converging, but they are not iden
 | `service.version` | exact match | resource attribute | Released application version |
 | `service.environment` | native | `deployment.environment.name` resource attribute | Deployment environment |
 | `http.request.id` | native | record attribute | Request correlation identifier |
+| `application.component` | custom | record attribute | Startup component associated with a lifecycle event |
+| `server.port` | custom | record attribute | HTTP port used by the application |
+| `database.system` | custom | record attribute | Database system, currently `postgresql` |
+| `database.operation` | custom | record attribute | Stable database initialization or cleanup step |
+| `auth.provider` | custom | record attribute | Configured authentication provider |
+| `slack.operation` | custom | record attribute | Slack command, connection, or message operation |
+| `background.task` | custom | record attribute | Stable name of a background task |
+| `error.type` | native | record attribute | Stable error category; never a raw error string |
 | `trace.id` | native | `TraceId` | W3C trace identifier when tracing is introduced |
 | `span.id` | native | `SpanId` | W3C span identifier when tracing is introduced |
 | All other fields | native, matching, or custom | record attributes | Event-specific attributes |
@@ -45,6 +53,14 @@ Every record contains:
 | `service.version` | string | no | Released application version |
 | `service.environment` | string | no | Deployment environment such as `production` |
 | `http.request.id` | string | no | Validated or server-generated request correlation ID |
+| `application.component` | string | no | Startup component associated with a lifecycle event |
+| `server.port` | integer | no | HTTP port used by the application |
+| `database.system` | string | no | Database system, currently `postgresql` |
+| `database.operation` | string | no | Stable database initialization or cleanup step |
+| `auth.provider` | string | no | Configured authentication provider |
+| `slack.operation` | string | no | Slack command, connection, or message operation |
+| `background.task` | string | no | Stable name of a background task |
+| `error.type` | string | no | Stable error category, not raw error text |
 | `trace.id` | string | no | W3C trace ID when distributed tracing is introduced |
 | `span.id` | string | no | W3C span ID when distributed tracing is introduced |
 
@@ -114,6 +130,38 @@ Example:
 {"@timestamp":"2026-09-22T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"WARN","message":"Authentication failed","event.action":"authentication","event.outcome":"failure","service.name":"go-url-api","http.request.id":"871de03da4de4fa68a6d1926f7067037","auth.provider":"oidc","error.type":"invalid_state"}
 ```
 
+The same action records provider initialization success and failure with the configured provider. Request authentication failures include `http.request.id`; startup events do not.
+
+## Application lifecycle events
+
+| `event.action` | Description | Event-specific fields |
+| --- | --- | --- |
+| `application.startup` | Application started or a startup component failed | `application.component`, `server.port`, `error.type` |
+| `application.shutdown` | Shutdown began, completed, or failed | `error.type` on failure |
+| `application.panic` | A request panic was recovered | `http.request.id`, `error.type` |
+
+Startup component values identify configuration, database, routes, the HTTP server, or optional Sentry initialization. A Sentry initialization failure is logged but does not prevent the application from starting. Fatal configuration, database, route, and listener failures are logged before the process exits. Panic values and stack traces are not logged; the corresponding HTTP request event contains a sanitized 500 error.
+
+## Database events
+
+| `event.action` | Description | Event-specific fields |
+| --- | --- | --- |
+| `database.schema` | Database schema initialization succeeded or a migration step failed | `database.system`, `database.operation`, `error.type` on failure |
+| `database.connection` | Cleanup after failed schema initialization failed | `database.system`, `database.operation`, `error.type` |
+
+Database error text and connection details are not emitted. `database.operation` identifies the schema step so operators can diagnose failures without exposing credentials or query values.
+
+## Slack events
+
+| `event.action` | Description | Event-specific fields |
+| --- | --- | --- |
+| `slack.command` | A slash command was accepted or rejected | `http.request.id`, `slack.operation`, `error.type` on failure |
+| `slack.bot` | Bot startup, connection, or message operation | `slack.operation`, `error.type` on failure |
+
+## Background task events
+
+`background.task` records the start and stop of the Slack bot event processor and failures while asynchronously recording query metrics or resolving URLs for Slack messages. These events include the stable `background.task` identifier and `error.type` when an operation fails. Raw database and Slack SDK errors are omitted.
+
 ## Error conventions
 
 Errors use the ECS `error.type` and `error.message` fields:
@@ -153,10 +201,10 @@ The application does not log:
 
 ## Configuration
 
-The existing `JSON_LOGS` setting controls output format:
+The existing `JSON_LOGS` setting controls output format for all application events:
 
 - `JSON_LOGS=true`: emit one ECS-shaped JSON object per stdout line using this schema.
-- `JSON_LOGS=false`: emit the same request, URL query, and authentication failure events in concise human-readable form.
+- `JSON_LOGS=false`: emit the same events in concise human-readable form.
 
 Service metadata configuration:
 
