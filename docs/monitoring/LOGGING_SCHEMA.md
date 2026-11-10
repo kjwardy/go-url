@@ -6,6 +6,8 @@ The application emits Elastic Common Schema (ECS)-shaped JSON because Elastic Ag
 
 ECS and OpenTelemetry semantic conventions are converging, but they are not identical. The application does not emit duplicate ECS and OpenTelemetry representations of the same value. Translation to OTLP can be performed by an OpenTelemetry Collector or Elastic ingest pipeline.
 
+See the [Elastic Agent example](ELASTIC_AGENT.md) and [OpenTelemetry Collector example](OPENTELEMETRY_COLLECTOR.md) for collection and field-mapping configurations.
+
 ## ECS and OpenTelemetry mapping
 
 | JSON field | ECS status | OpenTelemetry destination | Description |
