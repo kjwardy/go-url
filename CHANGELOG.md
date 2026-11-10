@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Debounced URL search suggestions and loading, error, and empty states for search results and dashboard data
+
+### Changed
+
+- Restored the pre-PR #30 Material UI layout, including icons for the dashboard tabs
+
 ## [1.1.0] - 2026-11-09
 
 ### Added

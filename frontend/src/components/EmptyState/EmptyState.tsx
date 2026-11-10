@@ -1,14 +1,7 @@
 import React from 'react';
-import { Loader2, RotateCcw } from 'lucide-react';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyContent,
-} from '../ui/empty';
-import { Button } from '../ui/button';
+import Button from '@material-ui/core/Button';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Typography from '@material-ui/core/Typography';
 
 interface EmptyStateProps {
   title: string;
@@ -23,25 +16,21 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   loading = false,
   onRetry,
 }) => (
-  <Empty className="min-h-36 py-8" role="status" aria-live="polite">
-    <EmptyHeader>
-      {loading && (
-        <EmptyMedia variant="icon">
-          <Loader2 className="animate-spin" aria-hidden="true" />
-        </EmptyMedia>
-      )}
-      <EmptyTitle>{title}</EmptyTitle>
-      <EmptyDescription>{description}</EmptyDescription>
-    </EmptyHeader>
+  <div
+    style={{ padding: 32, textAlign: 'center' }}
+    role={loading ? 'status' : 'alert'}
+  >
+    {loading && <CircularProgress size={24} aria-label="Loading" />}
+    <Typography variant="subtitle1">{title}</Typography>
+    <Typography variant="body2" color="textSecondary">
+      {description}
+    </Typography>
     {onRetry && (
-      <EmptyContent>
-        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-          <RotateCcw aria-hidden="true" data-icon="inline-start" />
-          Retry
-        </Button>
-      </EmptyContent>
+      <Button color="primary" onClick={onRetry}>
+        Try again
+      </Button>
     )}
-  </Empty>
+  </div>
 );
 
 export default EmptyState;
