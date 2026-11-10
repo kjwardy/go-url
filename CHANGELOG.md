@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Shared authenticated sessions, frontend user identity, and logout for all authentication providers
 - GitHub Actions validation for pushes and pull requests targeting `master`
 - ECS event category and type fields for HTTP request and URL query logs
+- Structured lifecycle, database, authentication, Slack command, and background-task log events with sanitized failure details
+- Docker Compose and `docker run` log rotation limits, with Docker driver and Kubernetes log-management guidance
 
 ### Changed
 

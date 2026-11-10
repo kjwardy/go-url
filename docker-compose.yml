@@ -17,6 +17,11 @@ services:
       - APP_URI=http://localhost:8080
       - DEBUG=false
     restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
   postgres:
     container_name: postgres
     image: postgres:17
@@ -28,3 +33,8 @@ services:
       - ./data/postgres:/var/lib/postgresql/data
     ports:
       - 5432:5432
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

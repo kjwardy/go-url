@@ -29,13 +29,13 @@ The recommended way to test and deploy is using Docker. You will need to run bot
 **Start Postgres**
 
 ```sh
-docker run -d -P --name db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e POSTGRES_ADDR=db:5432 postgres:17
+docker run -d -P --name db --log-driver=json-file --log-opt max-size=10m --log-opt max-file=3 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=go -e POSTGRES_ADDR=db:5432 postgres:17
 ```
 
 **Start App**
 
 ```sh
-docker run -p 1323:1323 -e HOSTS=localhost -e APP_URI=http://localhost:1323 -e JSON_LOGS=true --link db kjwardy/go-url
+docker run -p 1323:1323 --log-driver=json-file --log-opt max-size=10m --log-opt max-file=3 -e HOSTS=localhost -e APP_URI=http://localhost:1323 -e JSON_LOGS=true --link db kjwardy/go-url
 ```
 
 Alteratively use the docker-compose file and run:
@@ -43,6 +43,38 @@ Alteratively use the docker-compose file and run:
 ```sh
 docker-compose up
 ```
+
+## Container Log Rotation
+
+The app and Postgres write logs to container stdout/stderr. Docker's default `json-file` driver does not rotate logs unless limits are configured, so logs can otherwise consume the host's available storage. The Compose example limits each service's logs to three files of 10 MB each, a reasonable development default.
+
+Docker supports both `json-file` and `local` logging drivers. Configure a driver per service in Compose, or set a daemon-wide default in the Docker host's `daemon.json` and restart Docker for the change to take effect. For example, use the following for `json-file`:
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+```
+
+For production Docker hosts, prefer the `local` driver, which rotates logs by default and uses a more storage-efficient format. Its defaults are 20 MB per file and five files; to set those limits explicitly:
+
+```json
+{
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "20m",
+    "max-file": "5"
+  }
+}
+```
+
+Choose `json-file` instead when your log collector needs to read Docker's JSON log files, and configure rotation as above. Driver changes apply to newly created containers, so recreate existing containers after changing the daemon default. Per-container limits bound each container's local logs; use an external collector and retention policy if logs must be retained beyond that.
+
+On Kubernetes, configure node-level kubelet log rotation (for example, `containerLogMaxSize` and `containerLogMaxFiles`) through your cluster or node configuration; managed Kubernetes providers may expose these settings differently. Deploy a cluster-supported log collector, such as Fluent Bit or the OpenTelemetry Collector, to ship container logs off-node and apply centralized retention. Node rotation limits local storage, while external collection provides durable access to logs.
 
 ## Environment Configuration
 
