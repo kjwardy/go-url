@@ -1,10 +1,17 @@
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
-import { Loader2, Search as SearchIcon } from 'lucide-react';
-import { useHistory } from 'react-router-dom';
-import { Input } from '../ui/input';
-import { Popover, PopoverContent } from '../ui/popover';
+import ClickAwayListener from '@material-ui/core/ClickAwayListener';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import InputBase from '@material-ui/core/InputBase';
+import ListItemText from '@material-ui/core/ListItemText';
+import MenuItem from '@material-ui/core/MenuItem';
+import MenuList from '@material-ui/core/MenuList';
+import Paper from '@material-ui/core/Paper';
+import Popper from '@material-ui/core/Popper';
+import SearchIcon from '@material-ui/icons/Search';
+import Typography from '@material-ui/core/Typography';
+import useStyles from './useStyles';
 
 interface SearchResult {
   key: string;
@@ -13,14 +20,14 @@ interface SearchResult {
   views: number;
 }
 
-const SEARCH_DEBOUNCE_MS = 300;
-
 interface SearchProps {
+  onSearch: (query: string) => void;
   deleted: string[];
 }
 
-const Search: React.FC<SearchProps> = ({ deleted }) => {
-  const history = useHistory();
+const SEARCH_DEBOUNCE_MS = 300;
+
+const Search: React.FC<SearchProps> = ({ onSearch, deleted }) => {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -28,22 +35,13 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
   const [isFocused, setIsFocused] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const classes = useStyles({});
   const trimmedQuery = query.trim();
   const isDebouncing = trimmedQuery !== debouncedQuery;
   const isOpen = isFocused && trimmedQuery.length > 0;
   const visibleResults = results.filter(
     (result) => !deleted.includes(result.key),
-  );
-
-  const searchFor = useCallback(
-    (searchQuery: string) => {
-      const trimmedSearchQuery = searchQuery.trim();
-      if (!trimmedSearchQuery) return;
-      history.push(`/${encodeURIComponent(trimmedSearchQuery)}`);
-      setIsFocused(false);
-    },
-    [history],
   );
 
   useEffect(() => {
@@ -80,92 +78,110 @@ const Search: React.FC<SearchProps> = ({ deleted }) => {
     };
   }, [debouncedQuery]);
 
+  const searchFor = (searchQuery: string) => {
+    const normalizedQuery = searchQuery.trim();
+    if (!normalizedQuery) return;
+    onSearch(normalizedQuery);
+    setIsFocused(false);
+  };
+
   return (
-    <>
-      <form
-        ref={formRef}
-        role="search"
-        className="relative w-full sm:ml-2 sm:w-auto"
-        onSubmit={(event) => {
-          event.preventDefault();
-          searchFor(trimmedQuery);
-        }}
-      >
-        <Popover open={isOpen} onOpenChange={(open) => setIsFocused(open)}>
-          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+    <ClickAwayListener onClickAway={() => setIsFocused(false)}>
+      <div role="search">
+        <div ref={anchorRef} className={classes.search}>
+          <div className={classes.searchIcon}>
+            <SearchIcon />
+          </div>
+          <InputBase
             aria-label="Search URLs"
-            aria-autocomplete="list"
-            aria-controls="search-suggestions"
-            aria-expanded={isOpen}
-            autoComplete="off"
+            inputProps={{
+              'aria-autocomplete': 'list',
+              'aria-controls': 'search-suggestions',
+              'aria-expanded': isOpen,
+              autoComplete: 'off',
+            }}
             placeholder="Search…"
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setIsFocused(true)}
-            onBlur={() => {
-              if (!trimmedQuery) setIsFocused(false);
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                searchFor(query);
+              }
             }}
             value={query}
-            className="pl-9 sm:w-72"
+            classes={{
+              root: classes.inputRoot,
+              input: classes.inputInput,
+            }}
           />
-          <PopoverContent
-            anchor={formRef}
-            initialFocus={false}
-            finalFocus={false}
-            className="max-h-80 overflow-y-auto"
-          >
+        </div>
+        <Popper
+          open={isOpen}
+          anchorEl={anchorRef.current}
+          placement="bottom-start"
+          className={classes.suggestions}
+          style={{ width: anchorRef.current?.offsetWidth }}
+        >
+          <Paper elevation={8}>
             {isDebouncing || searchStatus === 'loading' ? (
-              <div
-                className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-muted-foreground"
-                role="status"
-              >
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Searching…
+              <div className={classes.suggestionState} role="status">
+                <CircularProgress size={18} />
+                <Typography variant="body2">Searching…</Typography>
               </div>
             ) : searchStatus === 'error' ? (
-              <div className="px-4 py-6 text-center" role="status">
-                <p className="text-sm font-medium">Search unavailable</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Try again in a moment.
-                </p>
+              <div className={classes.suggestionState} role="status">
+                <div>
+                  <Typography variant="subtitle2">
+                    Search unavailable
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Try again in a moment.
+                  </Typography>
+                </div>
               </div>
             ) : visibleResults.length === 0 ? (
-              <div className="px-4 py-6 text-center" role="status">
-                <p className="text-sm font-medium">No results found</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Try a different search term.
-                </p>
+              <div className={classes.suggestionState} role="status">
+                <div>
+                  <Typography variant="subtitle2">No results found</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Try a different search term.
+                  </Typography>
+                </div>
               </div>
             ) : (
-              <ul
+              <MenuList
                 id="search-suggestions"
                 aria-label="Search results"
                 role="listbox"
+                dense
               >
                 {visibleResults.map((result) => (
-                  <li key={result.key} role="option" aria-selected={false}>
-                    <button
-                      type="button"
-                      className="block w-full border-b px-4 py-3 text-left last:border-b-0 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                      onClick={() => searchFor(result.key)}
-                    >
-                      <span className="block truncate text-sm font-medium">
-                        {result.key}
-                      </span>
-                      <span className="mt-1 block truncate text-xs text-muted-foreground">
-                        {result.alias?.length
+                  <MenuItem
+                    key={result.key}
+                    role="option"
+                    aria-selected={false}
+                    tabIndex={0}
+                    onClick={() => searchFor(result.key)}
+                  >
+                    <ListItemText
+                      primary={result.key}
+                      secondary={
+                        result.alias?.length
                           ? result.alias.join(', ')
-                          : result.url}
-                      </span>
-                    </button>
-                  </li>
+                          : result.url
+                      }
+                      primaryTypographyProps={{ noWrap: true }}
+                      secondaryTypographyProps={{ noWrap: true }}
+                    />
+                  </MenuItem>
                 ))}
-              </ul>
+              </MenuList>
             )}
-          </PopoverContent>
-        </Popover>
-      </form>
-    </>
+          </Paper>
+        </Popper>
+      </div>
+    </ClickAwayListener>
   );
 };
 
