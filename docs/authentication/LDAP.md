@@ -1,5 +1,7 @@
 # LDAP authentication
 
+See the [authentication overview](README.md) for provider comparison, shared sessions and cookies, reverse-proxy requirements, and trusted-network configuration.
+
 `go-url` can authenticate users against an LDAP directory using a service-account search followed by a user bind. Authentication creates the same server-side session used by the other providers.
 
 For a complete Docker Compose deployment, including a sample environment file and HTTPS reverse-proxy requirements, see the [LDAP deployment guide](../deployment/LDAP.md).
@@ -39,7 +41,7 @@ LDAP_GROUP_FILTER=(&(objectClass=groupOfNames)(member={user_dn}))
 LDAP_ALLOWED_GROUPS=cn=go-url,ou=groups,dc=example,dc=com;cn=admins,ou=groups,dc=example,dc=com
 ```
 
-The group filter must contain exactly one `{user_dn}` placeholder. Each returned group entry's distinguished name is compared with the semicolon-separated allowed DNs. Adjust the filter and search base to match the directory's schema and membership model. If the user is not in an allowed group, sign-in is denied.
+The group filter must contain exactly one `{user_dn}` placeholder; the user's DN is LDAP-filter escaped before substitution. Each returned group entry's distinguished name is parsed and compared with the semicolon-separated allowed DNs. Adjust the filter and search base to match the directory's schema and membership model. If the user is not in an allowed group, sign-in is denied.
 
 ## Login and sessions
 

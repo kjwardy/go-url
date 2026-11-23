@@ -103,7 +103,7 @@ On Kubernetes, configure node-level kubelet log rotation (for example, `containe
 | Env Var                     | Required | Default              | Example                                        | Description                                                                                           |
 | --------------------------- | -------- | -------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `ENABLE_AUTH`               |          | false                |                                                | Enable authentication                                                                                 |
-| `AUTH_PROVIDER`             | auth     |                      | oidc                                           | Active provider: `azure`, `okta`, `oidc`, or `ldap`                                                    |
+| `AUTH_PROVIDER`             | auth     |                      | oidc                                           | Active provider: `azure`, `okta`, `oidc`, or `ldap`; required when authentication is enabled            |
 | `AUTH_EXPIRY_SECONDS`       |          | 2592000              |                                                | Auth cookie expiry (default 30 days)                                                                  |
 | `SECURE_COOKIES`            |          | true                 |                                                | Use secure HTTPS-only cookies                                                                         |
 | `SESSION_TOKEN`             | auth     |                      |                                                | Secret signing key for application sessions                                                           |
@@ -136,10 +136,8 @@ On Kubernetes, configure node-level kubelet log rotation (for example, `containe
 | `ALLOW_FORWARDED_FOR`       |          | false                |                                                | Retrieve origin IP from X-Forwarded-For. Enable only behind a trusted proxy                            |
 | `FORWARDED_FOR_TRUST_LEVEL` |          | 1                    |                                                | Number of trusted proxy levels in X-Forwarded-For                                                     |
 
-See the [generic OIDC guide](docs/authentication/OIDC.md) for provider setup, security behavior, logout, and troubleshooting.
+See the [authentication overview](docs/authentication/README.md) to compare providers and configure shared session, cookie, proxy, and trusted-network settings.
 
-See the [LDAP guide](docs/authentication/LDAP.md) for directory setup, group restrictions, TLS configuration, and troubleshooting.
-
-For a complete Docker Compose deployment example, see the [LDAP deployment guide](docs/deployment/LDAP.md).
+Provider setup: [Microsoft Entra ID](docs/authentication/Azure.md), [Okta](docs/authentication/Okta.md), [generic OIDC](docs/authentication/OIDC.md), and [LDAP](docs/authentication/LDAP.md). Docker Compose deployment guides are available for [Entra ID](docs/deployment/Azure.md), [Okta](docs/deployment/Okta.md), and [LDAP](docs/deployment/LDAP.md).
 
 See the [API logging schema](docs/monitoring/LOGGING_SCHEMA.md) for event fields, ECS and OpenTelemetry mappings, correlation behavior, and excluded sensitive data.
