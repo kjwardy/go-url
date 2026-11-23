@@ -1,12 +1,15 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/gorilla/sessions"
+	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/labstack/echo"
 )
 
@@ -88,5 +91,34 @@ func TestManagerIdentityReturnsAuthenticatedSessionIdentity(t *testing.T) {
 	}
 	if identity.Provider != "oidc" || identity.Username != "user" {
 		t.Errorf("identity = %#v", identity)
+	}
+}
+
+func TestLDAPManagerExposesLoginRoutesWithoutSession(t *testing.T) {
+	ldapConfig := config.LDAP{
+		URL:               "ldaps://ldap.example.com",
+		BindDN:            "cn=service,dc=example,dc=com",
+		BindPassword:      "secret",
+		UserSearchBase:    "ou=users,dc=example,dc=com",
+		UserFilter:        "(uid={username})",
+		UsernameAttribute: "uid",
+	}
+	manager, err := NewManager(context.Background(), config.Auth{
+		Enabled:                true,
+		Provider:               "ldap",
+		SessionToken:           strings.Repeat("s", 32),
+		MaxAge:                 3600,
+		SecureCookies:          true,
+		ForwardedForTrustLevel: 1,
+		LDAP:                   ldapConfig,
+	}, "https://go.example.com", logging.New(logging.Config{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !manager.IsPublic(ldapLoginPath) || !manager.IsPublic(ldapLoginPage) {
+		t.Error("LDAP login routes must be public so an unauthenticated user can submit credentials")
+	}
+	if manager.IsPublic("/api/search") {
+		t.Error("ordinary API routes must still require authentication")
 	}
 }

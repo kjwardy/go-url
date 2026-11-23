@@ -82,6 +82,18 @@ func (m *SessionManager) Identity(c echo.Context) (*Identity, error) {
 	return identity, nil
 }
 
+func (m *SessionManager) PendingLogin(c echo.Context, provider string) (*PendingLogin, error) {
+	session, err := m.session(c)
+	if err != nil {
+		return nil, err
+	}
+	pending, ok := session.Values["pending_login"].(*PendingLogin)
+	if !ok || pending == nil || pending.Provider != provider {
+		return nil, fmt.Errorf("login session is missing or invalid")
+	}
+	return pending, nil
+}
+
 func (m *SessionManager) BeginLogin(c echo.Context, pending *PendingLogin) error {
 	pending.RedirectPath = safeRedirectPath(pending.RedirectPath)
 	session, err := m.session(c)

@@ -7,6 +7,7 @@ import {
 import React from 'react';
 import Home from './views/Home';
 import Layout from './views/Layout';
+import Login from './views/Login';
 
 interface RoutesProps {
   mode: 'light' | 'dark';
@@ -15,12 +16,17 @@ interface RoutesProps {
 
 const Routes: React.FC<RoutesProps> = ({ mode, onToggleMode }) => (
   <Router basename="/go">
-    <Layout mode={mode} onToggleMode={onToggleMode}>
-      <Switch>
-        <Route exact path="/:query?" component={Home} />
-        <Redirect to="/" />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route exact path="/login" component={Login} />
+      <Route>
+        <Layout mode={mode} onToggleMode={onToggleMode}>
+          <Switch>
+            <Route exact path="/:query?" component={Home} />
+            <Redirect to="/" />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   </Router>
 );
 

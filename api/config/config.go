@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/go-ldap/ldap/v3"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -48,6 +49,18 @@ type Specification struct {
 	OIDCScopes             []string `envconfig:"OIDC_SCOPES"`
 	OIDCUsernameClaim      string   `envconfig:"OIDC_USERNAME_CLAIM"`
 	OIDCEmailClaim         string   `envconfig:"OIDC_EMAIL_CLAIM"`
+	LDAPURL                string   `envconfig:"LDAP_URL"`
+	LDAPStartTLS           bool     `envconfig:"LDAP_STARTTLS"`
+	LDAPInsecureSkipVerify bool     `envconfig:"LDAP_INSECURE_SKIP_VERIFY"`
+	LDAPCACertFile         string   `envconfig:"LDAP_CA_CERT_FILE"`
+	LDAPBindDN             string   `envconfig:"LDAP_BIND_DN"`
+	LDAPBindPassword       string   `envconfig:"LDAP_BIND_PASSWORD"`
+	LDAPUserSearchBase     string   `envconfig:"LDAP_USER_SEARCH_BASE"`
+	LDAPUserFilter         string   `envconfig:"LDAP_USER_FILTER"`
+	LDAPUsernameAttribute  string   `envconfig:"LDAP_USERNAME_ATTRIBUTE"`
+	LDAPGroupSearchBase    string   `envconfig:"LDAP_GROUP_SEARCH_BASE"`
+	LDAPGroupFilter        string   `envconfig:"LDAP_GROUP_FILTER"`
+	LDAPAllowedGroups      string   `envconfig:"LDAP_ALLOWED_GROUPS"`
 }
 
 type OIDC struct {
@@ -58,6 +71,21 @@ type OIDC struct {
 	Scopes        []string
 	UsernameClaim string
 	EmailClaim    string
+}
+
+type LDAP struct {
+	URL                string
+	StartTLS           bool
+	InsecureSkipVerify bool
+	CACertFile         string
+	BindDN             string
+	BindPassword       string
+	UserSearchBase     string
+	UserFilter         string
+	UsernameAttribute  string
+	GroupSearchBase    string
+	GroupFilter        string
+	AllowedGroups      []string
 }
 
 // Auth config
@@ -77,6 +105,7 @@ type Auth struct {
 	OktaClientSecret       string
 	OktaIssuer             string
 	OIDC                   OIDC
+	LDAP                   LDAP
 }
 
 // Database config
@@ -118,6 +147,7 @@ func Validate(c Config) error {
 		"azure": c.Auth.ADTenantID != "" || c.Auth.ADClientID != "" || c.Auth.ADClientSecret != "",
 		"okta":  c.Auth.OktaClientID != "" || c.Auth.OktaClientSecret != "" || c.Auth.OktaIssuer != "",
 		"oidc":  oidcConfigured(c.Auth.OIDC),
+		"ldap":  ldapConfigured(c.Auth.LDAP),
 	}
 	if !c.Auth.Enabled {
 		if provider != "" {
@@ -136,8 +166,8 @@ func Validate(c Config) error {
 	if c.Auth.MaxAge < 1 {
 		return fmt.Errorf("AUTH_EXPIRY_SECONDS must be greater than 0 when authentication is enabled")
 	}
-	if provider != "azure" && provider != "okta" && provider != "oidc" {
-		return fmt.Errorf("AUTH_PROVIDER must be azure, okta, or oidc when authentication is enabled")
+	if provider != "azure" && provider != "okta" && provider != "oidc" && provider != "ldap" {
+		return fmt.Errorf("AUTH_PROVIDER must be azure, okta, oidc, or ldap when authentication is enabled")
 	}
 	for name, active := range configured {
 		if name != provider && active {
@@ -157,12 +187,98 @@ func Validate(c Config) error {
 		if err := validateOIDC(c.Auth.OIDC); err != nil {
 			return err
 		}
+	case "ldap":
+		if err := validateLDAP(c.Auth.LDAP, c.AppURI); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func oidcConfigured(c OIDC) bool {
 	return c.IssuerURL != "" || c.ClientID != "" || c.ClientSecret != "" || c.RedirectURL != "" || len(c.Scopes) > 0 || c.UsernameClaim != "" || c.EmailClaim != ""
+}
+
+func ldapConfigured(c LDAP) bool {
+	return c.URL != "" ||
+		c.StartTLS ||
+		c.InsecureSkipVerify ||
+		c.CACertFile != "" ||
+		c.BindDN != "" ||
+		c.BindPassword != "" ||
+		c.UserSearchBase != "" ||
+		c.UserFilter != "" ||
+		c.UsernameAttribute != "" ||
+		c.GroupSearchBase != "" ||
+		c.GroupFilter != "" ||
+		len(c.AllowedGroups) > 0
+}
+
+func validateLDAP(c LDAP, appURI string) error {
+	if c.URL == "" || c.BindDN == "" || c.BindPassword == "" || c.UserSearchBase == "" {
+		return fmt.Errorf("LDAP_URL, LDAP_BIND_DN, LDAP_BIND_PASSWORD, and LDAP_USER_SEARCH_BASE are required")
+	}
+	serverURL, err := url.Parse(c.URL)
+	if err != nil || serverURL.Host == "" || serverURL.User != nil || serverURL.RawQuery != "" || serverURL.Fragment != "" || (serverURL.Path != "" && serverURL.Path != "/") {
+		return fmt.Errorf("LDAP_URL must be an LDAP server URL without credentials or a path")
+	}
+	switch serverURL.Scheme {
+	case "ldaps":
+		if c.StartTLS {
+			return fmt.Errorf("LDAP_STARTTLS cannot be enabled with an ldaps:// LDAP_URL")
+		}
+	case "ldap":
+		if !c.StartTLS {
+			return fmt.Errorf("LDAP_STARTTLS=true is required with an ldap:// LDAP_URL")
+		}
+	default:
+		return fmt.Errorf("LDAP_URL must use ldap:// or ldaps://")
+	}
+	if err := validateAuthURL("APP_URI", appURI, false); err != nil {
+		return err
+	}
+	if !validLDAPAttribute(c.UsernameAttribute) {
+		return fmt.Errorf("LDAP_USERNAME_ATTRIBUTE must be a valid LDAP attribute name")
+	}
+	if strings.Count(c.UserFilter, "{username}") != 1 {
+		return fmt.Errorf("LDAP_USER_FILTER must contain exactly one {username} placeholder")
+	}
+	if _, err := ldap.CompileFilter(strings.Replace(c.UserFilter, "{username}", "go-url-user", 1)); err != nil {
+		return fmt.Errorf("LDAP_USER_FILTER is invalid")
+	}
+	if len(c.AllowedGroups) == 0 {
+		if c.GroupSearchBase != "" || c.GroupFilter != "" {
+			return fmt.Errorf("LDAP_GROUP_SEARCH_BASE and LDAP_GROUP_FILTER require LDAP_ALLOWED_GROUPS")
+		}
+		return nil
+	}
+	if c.GroupSearchBase == "" || strings.Count(c.GroupFilter, "{user_dn}") != 1 {
+		return fmt.Errorf("LDAP_GROUP_SEARCH_BASE and LDAP_GROUP_FILTER with one {user_dn} placeholder are required when LDAP_ALLOWED_GROUPS is set")
+	}
+	if _, err := ldap.CompileFilter(strings.Replace(c.GroupFilter, "{user_dn}", "cn=go-url-user,dc=example,dc=com", 1)); err != nil {
+		return fmt.Errorf("LDAP_GROUP_FILTER is invalid")
+	}
+	for _, groupDN := range c.AllowedGroups {
+		if _, err := ldap.ParseDN(groupDN); err != nil {
+			return fmt.Errorf("LDAP_ALLOWED_GROUPS contains an invalid distinguished name")
+		}
+	}
+	return nil
+}
+
+func validLDAPAttribute(attribute string) bool {
+	if attribute == "" || !((attribute[0] >= 'a' && attribute[0] <= 'z') || (attribute[0] >= 'A' && attribute[0] <= 'Z')) {
+		return false
+	}
+	for _, character := range attribute[1:] {
+		if !((character >= 'a' && character <= 'z') ||
+			(character >= 'A' && character <= 'Z') ||
+			(character >= '0' && character <= '9') ||
+			character == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 func validateOIDC(c OIDC) error {
@@ -239,6 +355,22 @@ func Init() error {
 	if oidcEmailClaim == "" && strings.EqualFold(spec.AuthProvider, "oidc") {
 		oidcEmailClaim = "email"
 	}
+	ldapUsernameAttribute := spec.LDAPUsernameAttribute
+	ldapUserFilter := spec.LDAPUserFilter
+	if strings.EqualFold(spec.AuthProvider, "ldap") {
+		if ldapUsernameAttribute == "" {
+			ldapUsernameAttribute = "uid"
+		}
+		if ldapUserFilter == "" {
+			ldapUserFilter = "(" + ldapUsernameAttribute + "={username})"
+		}
+	}
+	var ldapAllowedGroups []string
+	if spec.LDAPAllowedGroups != "" {
+		for _, groupDN := range strings.Split(spec.LDAPAllowedGroups, ";") {
+			ldapAllowedGroups = append(ldapAllowedGroups, strings.TrimSpace(groupDN))
+		}
+	}
 	config.Auth = Auth{
 		Enabled:                spec.EnableAuth,
 		Provider:               strings.ToLower(strings.TrimSpace(spec.AuthProvider)),
@@ -262,6 +394,20 @@ func Init() error {
 			Scopes:        oidcScopes,
 			UsernameClaim: oidcUsernameClaim,
 			EmailClaim:    oidcEmailClaim,
+		},
+		LDAP: LDAP{
+			URL:                spec.LDAPURL,
+			StartTLS:           spec.LDAPStartTLS,
+			InsecureSkipVerify: spec.LDAPInsecureSkipVerify,
+			CACertFile:         spec.LDAPCACertFile,
+			BindDN:             spec.LDAPBindDN,
+			BindPassword:       spec.LDAPBindPassword,
+			UserSearchBase:     spec.LDAPUserSearchBase,
+			UserFilter:         ldapUserFilter,
+			UsernameAttribute:  ldapUsernameAttribute,
+			GroupSearchBase:    spec.LDAPGroupSearchBase,
+			GroupFilter:        spec.LDAPGroupFilter,
+			AllowedGroups:      ldapAllowedGroups,
 		},
 	}
 	config.Database = Database{

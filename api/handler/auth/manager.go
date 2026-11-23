@@ -39,22 +39,28 @@ func NewManager(ctx context.Context, authConfig config.Auth, appURI string, logg
 		provider = NewOktaProvider(authConfig, appURI, sessions, logger)
 	case "oidc":
 		provider, err = NewOIDCProvider(ctx, authConfig.OIDC, appURI, sessions, logger)
+	case "ldap":
+		provider, err = NewLDAPProvider(authConfig.LDAP, sessions, logger)
 	default:
 		err = fmt.Errorf("unsupported authentication provider %q", authConfig.Provider)
 	}
 	if err != nil {
 		return nil, err
 	}
+	publicPath := map[string]bool{
+		"/health":               true,
+		"/api/slack":            true,
+		"/logout":               true,
+		provider.CallbackPath(): true,
+	}
+	if provider.Name() == "ldap" {
+		publicPath["/go/login"] = true
+	}
 	return &Manager{
-		provider: provider,
-		sessions: sessions,
-		appURI:   appURI,
-		publicPath: map[string]bool{
-			"/health":               true,
-			"/api/slack":            true,
-			"/logout":               true,
-			provider.CallbackPath(): true,
-		},
+		provider:   provider,
+		sessions:   sessions,
+		appURI:     appURI,
+		publicPath: publicPath,
 	}, nil
 }
 
