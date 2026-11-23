@@ -33,7 +33,7 @@ See the [Elastic Agent example](ELASTIC_AGENT.md) and [OpenTelemetry Collector e
 | `slack.operation` | custom | record attribute | Slack command, connection, or message operation |
 | `background.task` | custom | record attribute | Stable name of a background task |
 | `frontend.component` | custom | record attribute | Allowlisted frontend component associated with a reported event |
-| `source.ip` | native | record attribute | Direct client connection IP for a frontend event |
+| `source.ip` | native | record attribute | Client IP attributed to a query or frontend event |
 | `user.name` | native | record attribute | Authenticated username from the server-side session |
 | `error.type` | native | record attribute | Stable error category; never a raw error string |
 | `trace.id` | native | `TraceId` | W3C trace identifier when tracing is introduced |
@@ -66,7 +66,7 @@ Every record contains:
 | `slack.operation` | string | no | Slack command, connection, or message operation |
 | `background.task` | string | no | Stable name of a background task |
 | `frontend.component` | string | no | Allowlisted frontend component associated with a reported event |
-| `source.ip` | string | no | Direct client connection IP for a frontend event |
+| `source.ip` | string | no | Client IP attributed to a query or frontend event; query events use the direct connection unless trusted forwarded-header handling is enabled |
 | `user.name` | string | no | Authenticated username from the server-side session |
 | `error.type` | string | no | Stable error category, not raw error text |
 | `trace.id` | string | no | W3C trace ID when distributed tracing is introduced |
@@ -113,18 +113,24 @@ Additional fields:
 | --- | --- | --- | --- |
 | `event.category` | string array | yes | `["web"]` |
 | `event.type` | string array | yes | `["access"]` |
+| `event.duration` | integer | yes | Total HTTP request duration in nanoseconds |
+| `http.response.status_code` | integer | yes | Actual HTTP response status code for the request |
 | `go_url.query.key` | string | yes | Normalized URL key that was queried |
 | `go_url.query.successful` | boolean | yes | Whether the key resolved successfully |
+| `source.ip` | string | yes | Validated client IP from the direct connection or trusted forwarded chain |
+| `user.name` | string | no | Authenticated username; omitted when no authenticated session is available |
 
 Example:
 
 ```json
-{"@timestamp":"2026-09-20T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"INFO","message":"URL query resolved","event.action":"go_url.query","event.category":["web"],"event.type":["access"],"event.outcome":"success","service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","go_url.query.key":"handbook","go_url.query.successful":true}
+{"@timestamp":"2026-09-20T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"INFO","message":"URL query resolved","event.action":"go_url.query","event.category":["web"],"event.type":["access"],"event.outcome":"success","event.duration":4270000,"service.name":"go-url-api","service.version":"1.1.0","service.environment":"production","http.request.id":"871de03da4de4fa68a6d1926f7067037","http.response.status_code":307,"go_url.query.key":"handbook","go_url.query.successful":true,"source.ip":"203.0.113.25","user.name":"alice"}
 ```
 
 The API emits one event for each distinct, normalized key explicitly requested by the user. URL query events use the valid ECS categorization `event.category: ["web"]` and `event.type: ["access"]`. Both fields are arrays as required by ECS. Multi-key requests can therefore produce both successful and unresolved events. Aliases expanded during resolution do not produce additional query events.
 
-An unresolved query uses the same schema with `event.outcome` set to `failure`, `go_url.query.successful` set to `false`, and the message set to `URL query unresolved`. A failed resolution is an expected application outcome and remains at `INFO` severity.
+An unresolved query uses the same schema with `event.outcome` set to `failure`, `go_url.query.successful` set to `false`, and the message set to `URL query unresolved`. `http.response.status_code` is the actual response code (for example, 307 for a browser redirect or 404 for a JSON request); `event.duration` is the total request duration. Multi-key requests emit one query event per distinct key, so all events from one request share its request ID, response status, duration, and source IP. A failed key resolution is an expected application outcome and remains at `INFO` severity.
+
+`source.ip` uses the direct peer address from `RemoteAddr` by default. `X-Forwarded-For` is considered only when `ALLOW_FORWARDED_FOR=true`; the configured `FORWARDED_FOR_TRUST_LEVEL` selects the address from the trusted proxy chain. Enable this only when the application is reachable through proxies that overwrite or correctly append the header. Without an authenticated session—including requests from IP allowlisted users who bypass login—`user.name` is omitted.
 
 ## Authentication failure event
 
@@ -183,7 +189,11 @@ Supported payloads are deliberately narrow:
 
 Unknown fields and unsupported values are rejected. The server chooses the event action, severity, outcome for errors, message, and canonical timestamp. It also derives the component for operations, request ID, direct source IP, and (when authenticated) username and auth provider from the server-side session. Client timestamps, severity, identity, IP, URLs, request data, credentials, cookies, tokens, and arbitrary metadata are not accepted or logged.
 
-Frontend reporting is best-effort: a rejected report request is ignored by the browser and is not retried, so logging failures cannot disrupt the UI or create retry loops. The in-memory per-process rate limit resets on restart and is not shared across replicas. For deployments needing a cluster-wide limit, apply a corresponding limit at the ingress. A 30-day retention period is a reasonable starting point; use a shorter period where practical and follow the deployment's privacy and retention policy. Source IPs and usernames may be personal data.
+Frontend reporting is best-effort: a rejected report request is ignored by the browser and is not retried, so logging failures cannot disrupt the UI or create retry loops. The in-memory per-process rate limit resets on restart and is not shared across replicas. For deployments needing a cluster-wide limit, apply a corresponding limit at the ingress.
+
+## Privacy and retention
+
+Query events can associate a requested key with a source IP and authenticated username. Source IPs and usernames may be personal data, and queried keys may reveal user interests or behavior. Collect and retain these fields only for a documented operational need, restrict log access, and use a retention period of 30 days or shorter where practical; follow any stricter organizational or legal policy. Apply retention at the log collector or storage backend. Container log rotation limits local disk use but does not delete copies already shipped to centralized storage.
 
 ## Error conventions
 

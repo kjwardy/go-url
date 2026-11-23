@@ -21,6 +21,7 @@ import (
 const (
 	ecsVersion          = "9.5.0" // ECS schema version emitted in all events
 	requestIDContextKey = "request_id"
+	queryLogsContextKey = "query_logs"
 )
 
 var (
@@ -41,6 +42,13 @@ type Logger struct {
 	serviceVersion     string
 	serviceEnvironment string
 	mu                 sync.Mutex
+}
+
+type queryLog struct {
+	key        string
+	successful bool
+	sourceIP   string
+	username   string
 }
 
 func New(config Config) *Logger {
@@ -72,8 +80,10 @@ func (l *Logger) Middleware() echo.MiddlewareFunc {
 			if err != nil {
 				c.Error(err)
 			}
+			duration := time.Since(start)
+			l.queryLogs(c, requestID, duration)
 			if !skipRequest(c.Request().URL.Path) {
-				l.request(c, requestID, time.Since(start), err)
+				l.request(c, requestID, duration, err)
 			}
 			return nil
 		}
@@ -107,19 +117,45 @@ func (l *Logger) Event(level, message, action, result string, attributes map[str
 	l.write(fields)
 }
 
-func (l *Logger) Query(requestID, key string, successful bool) {
+func (l *Logger) QueueQuery(c echo.Context, key string, successful bool, sourceIP, username string) {
+	events, _ := c.Get(queryLogsContextKey).([]queryLog)
+	events = append(events, queryLog{
+		key:        key,
+		successful: successful,
+		sourceIP:   sourceIP,
+		username:   username,
+	})
+	c.Set(queryLogsContextKey, events)
+}
+
+func (l *Logger) queryLogs(c echo.Context, requestID string, duration time.Duration) {
+	events, _ := c.Get(queryLogsContextKey).([]queryLog)
+	for _, event := range events {
+		l.query(c.Response().Status, requestID, event, duration)
+	}
+}
+
+func (l *Logger) query(status int, requestID string, event queryLog, duration time.Duration) {
 	// Set message and outcome based on resolution result
 	message := "URL query unresolved"
-	if successful {
+	if event.successful {
 		message = "URL query resolved"
 	}
 	fields := l.base("INFO", message, "go_url.query", time.Now().UTC())
 	fields["event.category"] = []string{"web"}
 	fields["event.type"] = []string{"access"}
-	fields["event.outcome"] = outcome(successful)
+	fields["event.outcome"] = outcome(event.successful)
 	fields["http.request.id"] = requestID
-	fields["go_url.query.key"] = key
-	fields["go_url.query.successful"] = successful
+	fields["http.response.status_code"] = status
+	fields["event.duration"] = duration.Nanoseconds()
+	fields["go_url.query.key"] = event.key
+	fields["go_url.query.successful"] = event.successful
+	if event.sourceIP != "" {
+		fields["source.ip"] = event.sourceIP
+	}
+	if event.username != "" {
+		fields["user.name"] = event.username
+	}
 	l.write(fields)
 }
 
@@ -180,7 +216,7 @@ func (l *Logger) write(fields map[string]interface{}) {
 	}
 	_, _ = fmt.Fprintf(l.output, "%s %s %s", fields["@timestamp"], fields["log.level"], fields["message"])
 	// Append relevant fields in key=value format
-	for _, key := range []string{"event.action", "event.category", "event.type", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "go_url.query.key", "go_url.query.successful", "database.system", "database.operation", "slack.operation", "background.task", "application.component", "server.port", "error.type", "error.message"} {
+	for _, key := range []string{"event.action", "event.category", "event.type", "event.outcome", "auth.provider", "http.request.id", "http.request.method", "http.route", "http.response.status_code", "event.duration", "source.ip", "user.name", "go_url.query.key", "go_url.query.successful", "database.system", "database.operation", "slack.operation", "background.task", "application.component", "server.port", "error.type", "error.message"} {
 		if value, ok := fields[key]; ok {
 			_, _ = fmt.Fprintf(l.output, " %s=%v", humanKey(key), value)
 		}
@@ -220,6 +256,10 @@ func humanKey(key string) string {
 		return "outcome"
 	case "http.route":
 		return "route"
+	case "source.ip":
+		return "source_ip"
+	case "user.name":
+		return "user"
 	case "error.type":
 		return "error_type"
 	case "error.message":

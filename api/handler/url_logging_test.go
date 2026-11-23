@@ -25,6 +25,7 @@ func TestLogQueryOutcomesPerNormalizedRequestedKey(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "198.51.100.10:4321"
 	req.Header.Set(echo.HeaderXRequestID, "query-request")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -51,6 +52,21 @@ func assertQueryEntry(t *testing.T, entry map[string]interface{}, key string, su
 	t.Helper()
 	if entry["http.request.id"] != "query-request" {
 		t.Errorf("request ID = %#v, want query-request", entry["http.request.id"])
+	}
+	if entry["source.ip"] != "198.51.100.10" {
+		t.Errorf("source.ip = %#v, want 198.51.100.10", entry["source.ip"])
+	}
+	if entry["http.response.status_code"] != float64(http.StatusOK) {
+		t.Errorf("status = %#v, want %d", entry["http.response.status_code"], http.StatusOK)
+	}
+	if _, ok := entry["event.duration"].(float64); !ok {
+		t.Errorf("event.duration is not numeric: %#v", entry["event.duration"])
+	}
+	if _, ok := entry["@timestamp"].(string); !ok {
+		t.Errorf("@timestamp is not a string: %#v", entry["@timestamp"])
+	}
+	if _, ok := entry["user.name"]; ok {
+		t.Errorf("unexpected user.name for anonymous request: %#v", entry["user.name"])
 	}
 	if entry["go_url.query.key"] != key {
 		t.Errorf("key = %#v, want %q", entry["go_url.query.key"], key)

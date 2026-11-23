@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
-	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/model"
 	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
@@ -37,6 +36,19 @@ func (h *Handler) logQueryOutcomes(c echo.Context, keys []string, found []*model
 	if h.Logger == nil {
 		return
 	}
+	authConfig := config.GetConfig().Auth
+	clientIP := sourceIP(
+		c.Request().RemoteAddr,
+		c.Request().Header.Get("X-Forwarded-For"),
+		authConfig.AllowForwardedFor,
+		authConfig.ForwardedForTrustLevel,
+	)
+	username := ""
+	if h.Auth != nil {
+		if identity, err := h.Auth.Identity(c); err == nil {
+			username = identity.Username
+		}
+	}
 	// Build a set of resolved keys for fast lookup
 	resolved := make(map[string]bool, len(found))
 	for _, item := range found {
@@ -50,7 +62,7 @@ func (h *Handler) logQueryOutcomes(c echo.Context, keys []string, found []*model
 			continue
 		}
 		logged[normalized] = true
-		h.Logger.Query(logging.RequestID(c), normalized, resolved[normalized])
+		h.Logger.QueueQuery(c, normalized, resolved[normalized], clientIP, username)
 	}
 }
 
