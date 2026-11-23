@@ -1,5 +1,7 @@
 # Generic OpenID Connect authentication
 
+See the [authentication overview](README.md) for provider comparison, shared sessions and cookies, reverse-proxy requirements, and trusted-network configuration.
+
 `go-url` supports generic OpenID Connect providers that implement discovery and the Authorization Code flow. The implementation uses state, nonce, and PKCE S256 validation and validates ID-token signatures, issuer, audience, and expiry.
 
 ## Provider configuration

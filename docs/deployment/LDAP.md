@@ -2,6 +2,8 @@
 
 This example runs the published `go-url` image and PostgreSQL with Docker Compose. It expects a DNS name for the application, a reachable LDAP server, and an HTTPS reverse proxy on the Docker host. Replace the example domain, directory names, and credentials with values for your environment.
 
+See the [authentication overview](../authentication/README.md) for shared provider, session, cookie, and proxy guidance.
+
 ## 1. Prepare configuration
 
 Copy the example environment file and generate unique secrets:

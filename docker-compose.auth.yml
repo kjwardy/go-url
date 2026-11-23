@@ -1,0 +1,56 @@
+services:
+  app:
+    image: kjwardy/go-url
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:1323:1323"
+    environment:
+      HOSTS: ${GO_URL_HOSTS:?Set GO_URL_HOSTS in the selected .env file}
+      APP_URI: ${APP_URI:?Set APP_URI in the selected .env file}
+      PORT: "1323"
+      POSTGRES_ADDR: postgres:5432
+      POSTGRES_DATABASE: go
+      POSTGRES_USER: go
+      POSTGRES_PASS: ${POSTGRES_PASS:?Set POSTGRES_PASS in the selected .env file}
+      ENABLE_AUTH: "true"
+      AUTH_PROVIDER: ${AUTH_PROVIDER:?Set AUTH_PROVIDER in the selected .env file}
+      AUTH_EXPIRY_SECONDS: ${AUTH_EXPIRY_SECONDS:-2592000}
+      SECURE_COOKIES: "true"
+      SESSION_TOKEN: ${SESSION_TOKEN:?Set SESSION_TOKEN in the selected .env file}
+      AD_TENANT_ID: ${AD_TENANT_ID:-}
+      AD_CLIENT_ID: ${AD_CLIENT_ID:-}
+      AD_CLIENT_SECRET: ${AD_CLIENT_SECRET:-}
+      OKTA_CLIENT_ID: ${OKTA_CLIENT_ID:-}
+      OKTA_CLIENT_SECRET: ${OKTA_CLIENT_SECRET:-}
+      OKTA_ISSUER: ${OKTA_ISSUER:-}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: go
+      POSTGRES_USER: go
+      POSTGRES_PASSWORD: ${POSTGRES_PASS:?Set POSTGRES_PASS in the selected .env file}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U go -d go"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
