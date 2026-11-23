@@ -14,6 +14,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
 import EmptyState from '../EmptyState/EmptyState';
+import { reportFrontendError } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 type HistoryLimit = 25 | 50 | 100;
@@ -51,6 +52,7 @@ const History: React.FC<HistoryProps> = ({ displayFlashError }) => {
       })
       .catch((err) => {
         if (cancelled) return;
+        reportFrontendError('history');
         setLoadStatus('error');
         displayFlashError(err.response.data.message || err.response.data);
       });

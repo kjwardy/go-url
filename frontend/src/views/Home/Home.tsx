@@ -14,6 +14,7 @@ import Metrics from '../../components/Metrics';
 import MostWanted from '../../components/MostWanted';
 import Results from '../../components/Results';
 import { displayFlashError } from '../../redux/flash/actions';
+import { reportFrontendError } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 interface HomeProps {
@@ -55,6 +56,7 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       })
       .catch((err) => {
         if (cancelled) return;
+        reportFrontendError('home');
         setPopularStatus('error');
         displayFlashError(err.response.data.message || err.response.data);
       });
@@ -90,6 +92,7 @@ const Home: React.FC<HomeProps> = ({ search, displayFlashError }) => {
       })
       .catch(() => {
         if (cancelled) return;
+        reportFrontendError('search');
         setQuerySearchResults([]);
         setQuerySearchStatus('error');
       });

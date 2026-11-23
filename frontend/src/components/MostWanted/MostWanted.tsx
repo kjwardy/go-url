@@ -10,6 +10,7 @@ import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
 import EditModal from '../EditModal';
 import EmptyState from '../EmptyState/EmptyState';
+import { reportFrontendError } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 interface MostWantedEntry {
@@ -39,6 +40,7 @@ const MostWanted: React.FC<MostWantedProps> = ({ displayFlashError }) => {
         setLoadStatus('loaded');
       })
       .catch((err) => {
+        reportFrontendError('most_wanted');
         setLoadStatus('error');
         displayFlashError(err.response.data.message || err.response.data);
       });

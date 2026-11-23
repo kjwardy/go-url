@@ -12,6 +12,7 @@ import {
   displayFlashSuccess,
 } from '../../redux/flash/actions';
 import { urlDeleted } from '../../redux/search/actions';
+import { reportFrontendOperation } from '../../monitoring/frontendEvents';
 
 interface DeleteModalOwnProps {
   urlKey: string;
@@ -43,12 +44,14 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
     axios
       .delete(`/${encodeURIComponent(urlKey)}`)
       .then(() => {
+        reportFrontendOperation('url.delete', 'success');
         displayFlashSuccess(`Successfully deleted ${urlKey}`);
         urlDeleted(urlKey);
         onDeleted();
         onClose();
       })
       .catch((err) => {
+        reportFrontendOperation('url.delete', 'failure');
         setDeleting(false);
         displayFlashError(err.response.data.message || err.response.data);
       });
