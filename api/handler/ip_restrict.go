@@ -10,6 +10,20 @@ import (
 	"github.com/labstack/echo"
 )
 
+func sourceIP(remoteAddr, forwardedFor string, allowForwardedFor bool, trustLevel int) string {
+	if allowForwardedFor && trustLevel > 0 && forwardedFor != "" {
+		forwardedIPs := strings.Split(forwardedFor, ",")
+		index := len(forwardedIPs) - trustLevel
+		if index < 0 {
+			index = 0
+		}
+		if ip := remoteIP(strings.TrimSpace(forwardedIPs[index])); ip != "" {
+			return ip
+		}
+	}
+	return remoteIP(remoteAddr)
+}
+
 func ipAllowed(allowedIPs, ips []string) bool {
 	for _, allowedIP := range allowedIPs {
 		_, ipNet, err := net.ParseCIDR(allowedIP)

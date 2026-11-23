@@ -126,9 +126,17 @@ func TestSkippedRequestsAreNotLogged(t *testing.T) {
 func TestQueryLog(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(Config{JSON: true, Output: &output})
-	logger.Query("request-123", "handbook", false)
+	e := echo.New()
+	e.Use(logger.Middleware())
+	e.GET("/query", func(c echo.Context) error {
+		logger.QueueQuery(c, "handbook", false, "203.0.113.25", "alice")
+		return c.NoContent(http.StatusNotFound)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/query", nil)
+	req.Header.Set(echo.HeaderXRequestID, "request-123")
+	e.ServeHTTP(httptest.NewRecorder(), req)
 
-	entry := decodeEntry(t, output.Bytes())
+	entry := decodeFirstEntry(t, output.Bytes())
 	assertEqual(t, entry["log.level"], "INFO")
 	assertEqual(t, entry["message"], "URL query unresolved")
 	assertEqual(t, entry["event.action"], "go_url.query")
@@ -137,21 +145,43 @@ func TestQueryLog(t *testing.T) {
 	assertEqual(t, entry["event.outcome"], "failure")
 	assertEqual(t, entry["ecs.version"], "9.5.0")
 	assertEqual(t, entry["http.request.id"], "request-123")
+	assertEqual(t, entry["http.response.status_code"], float64(http.StatusNotFound))
+	assertEqual(t, entry["source.ip"], "203.0.113.25")
+	assertEqual(t, entry["user.name"], "alice")
 	assertEqual(t, entry["go_url.query.key"], "handbook")
 	assertEqual(t, entry["go_url.query.successful"], false)
+	if _, ok := entry["event.duration"].(float64); !ok {
+		t.Fatalf("event.duration is not numeric: %#v", entry["event.duration"])
+	}
+	if _, ok := entry["@timestamp"].(string); !ok {
+		t.Fatalf("@timestamp is not a string: %#v", entry["@timestamp"])
+	}
 }
 
 func TestSuccessfulQueryLogCategorization(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(Config{JSON: true, Output: &output})
-	logger.Query("request-123", "handbook", true)
+	e := echo.New()
+	e.Use(logger.Middleware())
+	e.GET("/query", func(c echo.Context) error {
+		logger.QueueQuery(c, "handbook", true, "192.0.2.10", "")
+		return c.Redirect(http.StatusTemporaryRedirect, "/target")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/query", nil)
+	req.Header.Set(echo.HeaderXRequestID, "request-123")
+	e.ServeHTTP(httptest.NewRecorder(), req)
 
-	entry := decodeEntry(t, output.Bytes())
+	entry := decodeFirstEntry(t, output.Bytes())
 	assertEqual(t, entry["event.action"], "go_url.query")
 	assertStringArray(t, entry, "event.category", "web")
 	assertStringArray(t, entry, "event.type", "access")
 	assertEqual(t, entry["event.outcome"], "success")
 	assertEqual(t, entry["log.level"], "INFO")
+	assertEqual(t, entry["http.response.status_code"], float64(http.StatusTemporaryRedirect))
+	assertEqual(t, entry["source.ip"], "192.0.2.10")
+	if _, ok := entry["user.name"]; ok {
+		t.Errorf("unexpected user.name: %#v", entry["user.name"])
+	}
 }
 
 func TestAuthenticationFailureLog(t *testing.T) {
@@ -193,11 +223,19 @@ func TestInternalErrorIsSanitized(t *testing.T) {
 func TestHumanReadableOutput(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(Config{Output: &output})
-	logger.Query("request-123", "handbook", true)
+	e := echo.New()
+	e.Use(logger.Middleware())
+	e.GET("/query", func(c echo.Context) error {
+		logger.QueueQuery(c, "handbook", true, "203.0.113.25", "alice")
+		return c.Redirect(http.StatusTemporaryRedirect, "/target")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/query", nil)
+	req.Header.Set(echo.HeaderXRequestID, "request-123")
+	e.ServeHTTP(httptest.NewRecorder(), req)
 	logger.Event("INFO", "Application stopped", "application.shutdown", "success", map[string]interface{}{
 		"application.component": "http_server",
 	})
-	if got := output.String(); !strings.Contains(got, "INFO URL query resolved") || !strings.Contains(got, "request_id=request-123") || !strings.Contains(got, "key=handbook") {
+	if got := output.String(); !strings.Contains(got, "INFO URL query resolved") || !strings.Contains(got, "request_id=request-123") || !strings.Contains(got, "key=handbook") || !strings.Contains(got, "status=307") || !strings.Contains(got, "source_ip=203.0.113.25") || !strings.Contains(got, "user=alice") {
 		t.Errorf("unexpected human-readable output: %s", got)
 	}
 	if got := output.String(); !strings.Contains(got, "INFO Application stopped") || !strings.Contains(got, "event=application.shutdown") || !strings.Contains(got, "outcome=success") || !strings.Contains(got, "component=http_server") {
@@ -257,6 +295,15 @@ func decodeEntry(t *testing.T, data []byte) map[string]interface{} {
 	t.Helper()
 	var entry map[string]interface{}
 	if err := json.Unmarshal(bytes.TrimSpace(data), &entry); err != nil {
+		t.Fatalf("invalid JSON log %q: %v", data, err)
+	}
+	return entry
+}
+
+func decodeFirstEntry(t *testing.T, data []byte) map[string]interface{} {
+	t.Helper()
+	var entry map[string]interface{}
+	if err := json.NewDecoder(bytes.NewReader(data)).Decode(&entry); err != nil {
 		t.Fatalf("invalid JSON log %q: %v", data, err)
 	}
 	return entry

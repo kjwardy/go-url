@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Allowlisted frontend error and operation reporting with structured logging, request correlation, and privacy safeguards
 - LDAP authentication with configurable user and group searches, a React login form, and TLS certificate validation
+- Query logs now include source IP and authenticated username attribution, response status, and request duration
 
 ## [1.2.0] - 2026-11-10
 
