@@ -1,6 +1,6 @@
 # API Logging Schema
 
-This document describes the implemented JSON schema for application logs written to stdout. Structured request, URL query, lifecycle, database, authentication, Slack, and background-task events are available when `JSON_LOGS=true`.
+This document describes the implemented JSON schema for application logs written to stdout. Structured request, URL query, frontend, lifecycle, database, authentication, Slack, and background-task events are available when `JSON_LOGS=true`.
 
 The application emits Elastic Common Schema (ECS)-shaped JSON because Elastic Agent is the expected initial consumer. The selected fields either match OpenTelemetry semantic conventions directly or have a documented mapping to the OpenTelemetry Logs Data Model. Fields specific to `go-url` use the `go_url.*` namespace.
 
@@ -32,6 +32,9 @@ See the [Elastic Agent example](ELASTIC_AGENT.md) and [OpenTelemetry Collector e
 | `auth.provider` | custom | record attribute | Configured authentication provider |
 | `slack.operation` | custom | record attribute | Slack command, connection, or message operation |
 | `background.task` | custom | record attribute | Stable name of a background task |
+| `frontend.component` | custom | record attribute | Allowlisted frontend component associated with a reported event |
+| `source.ip` | native | record attribute | Direct client connection IP for a frontend event |
+| `user.name` | native | record attribute | Authenticated username from the server-side session |
 | `error.type` | native | record attribute | Stable error category; never a raw error string |
 | `trace.id` | native | `TraceId` | W3C trace identifier when tracing is introduced |
 | `span.id` | native | `SpanId` | W3C span identifier when tracing is introduced |
@@ -62,6 +65,9 @@ Every record contains:
 | `auth.provider` | string | no | Configured authentication provider |
 | `slack.operation` | string | no | Slack command, connection, or message operation |
 | `background.task` | string | no | Stable name of a background task |
+| `frontend.component` | string | no | Allowlisted frontend component associated with a reported event |
+| `source.ip` | string | no | Direct client connection IP for a frontend event |
+| `user.name` | string | no | Authenticated username from the server-side session |
 | `error.type` | string | no | Stable error category, not raw error text |
 | `trace.id` | string | no | W3C trace ID when distributed tracing is introduced |
 | `span.id` | string | no | W3C span ID when distributed tracing is introduced |
@@ -163,6 +169,21 @@ Database error text and connection details are not emitted. `database.operation`
 ## Background task events
 
 `background.task` records the start and stop of the Slack bot event processor and failures while asynchronously recording query metrics or resolving URLs for Slack messages. These events include the stable `background.task` identifier and `error.type` when an operation fails. Raw database and Slack SDK errors are omitted.
+
+## Frontend events
+
+The frontend may submit one event at a time to `POST /api/frontend-events`. The endpoint accepts only version 1 JSON payloads up to 1 KiB and returns `202 Accepted` when logged. Requests are limited to 20 per direct client IP per minute per API process; forwarded IP headers are ignored. The route inherits the application's existing authentication and IP restrictions.
+
+Supported payloads are deliberately narrow:
+
+| Type | Allowed values | Fields |
+| --- | --- | --- |
+| `error` | `component`: `home`, `search`, `history`, `metrics`, `most_wanted`, `edit_url`, `delete_url`; `code`: `api_request_failed` | `version: 1`, `type`, `component`, `code` |
+| `operation` | `operation`: `url.create`, `url.update`, `url.delete`; `outcome`: `success` or `failure` | `version: 1`, `type`, `operation`, `outcome` |
+
+Unknown fields and unsupported values are rejected. The server chooses the event action, severity, outcome for errors, message, and canonical timestamp. It also derives the component for operations, request ID, direct source IP, and (when authenticated) username and auth provider from the server-side session. Client timestamps, severity, identity, IP, URLs, request data, credentials, cookies, tokens, and arbitrary metadata are not accepted or logged.
+
+Frontend reporting is best-effort: a rejected report request is ignored by the browser and is not retried, so logging failures cannot disrupt the UI or create retry loops. The in-memory per-process rate limit resets on restart and is not shared across replicas. For deployments needing a cluster-wide limit, apply a corresponding limit at the ingress. A 30-day retention period is a reasonable starting point; use a shorter period where practical and follow the deployment's privacy and retention policy. Source IPs and usernames may be personal data.
 
 ## Error conventions
 

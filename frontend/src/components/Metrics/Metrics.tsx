@@ -6,6 +6,7 @@ import Typography from '@material-ui/core/Typography';
 import AssessmentIcon from '@material-ui/icons/Assessment';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
+import { reportFrontendError } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 interface DailyQueries {
@@ -38,9 +39,10 @@ const Metrics: React.FC<MetricsProps> = ({ displayFlashError }) => {
     axios
       .get<QueryMetrics>('/api/metrics', { params: { timezone } })
       .then(({ data }) => setMetrics(data))
-      .catch((err) =>
-        displayFlashError(err.response.data.message || err.response.data),
-      );
+      .catch((err) => {
+        reportFrontendError('metrics');
+        displayFlashError(err.response.data.message || err.response.data);
+      });
   }, [displayFlashError]);
 
   const dailyQueries = metrics?.daily_queries || [];

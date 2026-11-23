@@ -10,8 +10,9 @@ import (
 
 // Handler ...
 type Handler struct {
-	Auth   *auth.Manager
-	Logger *logging.Logger
+	Auth                 *auth.Manager
+	Logger               *logging.Logger
+	FrontendEventLimiter *FrontendEventLimiter
 }
 
 var (

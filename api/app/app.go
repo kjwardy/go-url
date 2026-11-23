@@ -20,7 +20,10 @@ import (
 
 // Init sets up all and creates routes
 func Init(e *echo.Echo, logger *logging.Logger) error {
-	h := &handler.Handler{Logger: logger}
+	h := &handler.Handler{
+		Logger:               logger,
+		FrontendEventLimiter: handler.NewFrontendEventLimiter(),
+	}
 
 	appConfig := config.GetConfig()
 	if appConfig.Auth.Enabled {
@@ -81,6 +84,7 @@ func Init(e *echo.Echo, logger *logging.Logger) error {
 	e.GET("/api/metrics", h.Metrics)
 	e.GET("/api/most-wanted", h.MostWanted)
 	e.GET("/api/url/:key", h.GetURL)
+	e.POST("/api/frontend-events", h.ReportFrontendEvent)
 
 	if appConfig.Slack.SigningSecret != "" {
 		e.POST("/api/slack", h.SlackCommand)

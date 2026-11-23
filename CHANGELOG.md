@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Allowlisted frontend error and operation reporting with structured logging, request correlation, and privacy safeguards
+
 ## [1.2.0] - 2026-11-10
 
 ### Added

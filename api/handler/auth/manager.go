@@ -74,6 +74,10 @@ func (m *Manager) IsPublic(path string) bool {
 	return m.publicPath[path]
 }
 
+func (m *Manager) Identity(c echo.Context) (*Identity, error) {
+	return m.sessions.Identity(c)
+}
+
 func randomValue(size int) (string, error) {
 	value := make([]byte, size)
 	if _, err := rand.Read(value); err != nil {

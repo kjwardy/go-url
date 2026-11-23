@@ -13,6 +13,7 @@ import {
   displayFlashSuccess,
 } from '../../redux/flash/actions';
 import { urlCreated, urlUpdated } from '../../redux/search/actions';
+import { reportFrontendOperation } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 interface EditModalProps {
@@ -55,6 +56,7 @@ const EditModal: React.FC<EditModalProps> = ({
       data: { url: query.url },
     })
       .then(({ data }: any) => {
+        reportFrontendOperation(edit ? 'url.update' : 'url.create', 'success');
         displayFlashSuccess(
           `Successfully set ${data.key} to ${data.url || data.alias}`,
         );
@@ -68,6 +70,7 @@ const EditModal: React.FC<EditModalProps> = ({
         onClose();
       })
       .catch((err) => {
+        reportFrontendOperation(edit ? 'url.update' : 'url.create', 'failure');
         setIsSubmitting(false);
         displayFlashError(err.response.data.message || err.response.data);
       });

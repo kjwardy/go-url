@@ -11,6 +11,7 @@ import Paper from '@material-ui/core/Paper';
 import Popper from '@material-ui/core/Popper';
 import SearchIcon from '@material-ui/icons/Search';
 import Typography from '@material-ui/core/Typography';
+import { reportFrontendError } from '../../monitoring/frontendEvents';
 import useStyles from './useStyles';
 
 interface SearchResult {
@@ -70,6 +71,7 @@ const Search: React.FC<SearchProps> = ({ onSearch, deleted }) => {
       })
       .catch(() => {
         if (!isCurrent) return;
+        reportFrontendError('search');
         setSearchStatus('error');
       });
 
