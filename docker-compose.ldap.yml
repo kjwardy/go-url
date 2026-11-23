@@ -1,0 +1,60 @@
+services:
+  app:
+    image: kjwardy/go-url
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:1323:1323"
+    environment:
+      HOSTS: ${GO_URL_HOSTS:?Set GO_URL_HOSTS in .env.ldap}
+      APP_URI: ${APP_URI:?Set APP_URI in .env.ldap}
+      PORT: "1323"
+      POSTGRES_ADDR: postgres:5432
+      POSTGRES_DATABASE: go
+      POSTGRES_USER: go
+      POSTGRES_PASS: ${POSTGRES_PASS:?Set POSTGRES_PASS in .env.ldap}
+      ENABLE_AUTH: "true"
+      AUTH_PROVIDER: ldap
+      SESSION_TOKEN: ${SESSION_TOKEN:?Set SESSION_TOKEN in .env.ldap}
+      SECURE_COOKIES: "true"
+      LDAP_URL: ${LDAP_URL:?Set LDAP_URL in .env.ldap}
+      LDAP_STARTTLS: ${LDAP_STARTTLS:-false}
+      LDAP_CA_CERT_FILE: ${LDAP_CA_CERT_FILE:-}
+      LDAP_BIND_DN: ${LDAP_BIND_DN:?Set LDAP_BIND_DN in .env.ldap}
+      LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD:?Set LDAP_BIND_PASSWORD in .env.ldap}
+      LDAP_USER_SEARCH_BASE: ${LDAP_USER_SEARCH_BASE:?Set LDAP_USER_SEARCH_BASE in .env.ldap}
+      LDAP_USER_FILTER: ${LDAP_USER_FILTER:-(&(objectClass=person)(uid={username}))}
+      LDAP_USERNAME_ATTRIBUTE: ${LDAP_USERNAME_ATTRIBUTE:-uid}
+      LDAP_GROUP_SEARCH_BASE: ${LDAP_GROUP_SEARCH_BASE:-}
+      LDAP_GROUP_FILTER: ${LDAP_GROUP_FILTER:-}
+      LDAP_ALLOWED_GROUPS: ${LDAP_ALLOWED_GROUPS:-}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: go
+      POSTGRES_USER: go
+      POSTGRES_PASSWORD: ${POSTGRES_PASS:?Set POSTGRES_PASS in .env.ldap}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U go -d go"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:

@@ -18,7 +18,7 @@ A simple URL shortener written in Go with a React frontend and Postgres database
 - View all-time and seven-day query metrics with success rates and a daily histogram
 - Persistent light and dark modes
 - OpenSearch integration providing suggestions directly in the browser
-- Optional authentication using Azure AD, Okta, or generic OpenID Connect
+- Optional authentication using Azure AD, Okta, generic OpenID Connect, or LDAP
 - Slack `/` command integration
 - Slackbot integration
 
@@ -103,7 +103,7 @@ On Kubernetes, configure node-level kubelet log rotation (for example, `containe
 | Env Var                     | Required | Default              | Example                                        | Description                                                                                           |
 | --------------------------- | -------- | -------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `ENABLE_AUTH`               |          | false                |                                                | Enable authentication                                                                                 |
-| `AUTH_PROVIDER`             | auth     |                      | oidc                                           | Active provider: `azure`, `okta`, or `oidc`                                                           |
+| `AUTH_PROVIDER`             | auth     |                      | oidc                                           | Active provider: `azure`, `okta`, `oidc`, or `ldap`                                                    |
 | `AUTH_EXPIRY_SECONDS`       |          | 2592000              |                                                | Auth cookie expiry (default 30 days)                                                                  |
 | `SECURE_COOKIES`            |          | true                 |                                                | Use secure HTTPS-only cookies                                                                         |
 | `SESSION_TOKEN`             | auth     |                      |                                                | Secret signing key for application sessions                                                           |
@@ -120,10 +120,26 @@ On Kubernetes, configure node-level kubelet log rotation (for example, `containe
 | `OIDC_SCOPES`               |          | openid,profile,email |                                                | Comma-separated OIDC scopes                                                                           |
 | `OIDC_USERNAME_CLAIM`       |          | preferred_username   |                                                | ID-token claim used as the username                                                                   |
 | `OIDC_EMAIL_CLAIM`          |          | email                |                                                | ID-token claim used as the email address                                                              |
+| `LDAP_URL`                  | LDAP     |                      | ldaps://ldap.example.com:636                   | LDAP server URL; use `ldaps://` or `ldap://` with StartTLS                                            |
+| `LDAP_STARTTLS`             |          | false                | true                                           | Upgrade `ldap://` connections to TLS before binding                                                   |
+| `LDAP_INSECURE_SKIP_VERIFY` |          | false                |                                                | Disable LDAP TLS certificate verification; only for controlled development                           |
+| `LDAP_CA_CERT_FILE`         |          |                      | /etc/ssl/certs/ldap-ca.pem                     | Additional PEM CA certificate file for LDAP TLS                                                       |
+| `LDAP_BIND_DN`              | LDAP     |                      | cn=go-url,ou=services,dc=example,dc=com        | Service account DN used to search the directory                                                       |
+| `LDAP_BIND_PASSWORD`        | LDAP     |                      |                                                | Service account password                                                                              |
+| `LDAP_USER_SEARCH_BASE`     | LDAP     |                      | ou=people,dc=example,dc=com                   | Base DN for user searches                                                                              |
+| `LDAP_USER_FILTER`          |          | (`uid={username}`)   | (&(objectClass=person)(uid={username}))        | LDAP filter with exactly one `{username}` placeholder                                                 |
+| `LDAP_USERNAME_ATTRIBUTE`   |          | uid                  | uid                                            | LDAP user attribute used as the application username                                                  |
+| `LDAP_GROUP_SEARCH_BASE`    |          |                      | ou=groups,dc=example,dc=com                    | Base DN for optional group-membership searches                                                         |
+| `LDAP_GROUP_FILTER`         |          |                      | (&(objectClass=groupOfNames)(member={user_dn})) | LDAP group filter with exactly one `{user_dn}` placeholder; required when groups are restricted        |
+| `LDAP_ALLOWED_GROUPS`       |          |                      | cn=go-url,ou=groups,dc=example,dc=com          | Semicolon-separated allowed group DNs; empty means no group restriction                               |
 | `ALLOWED_IPS`               |          |                      | 110.1.10.2,1.1.22.0/24                         | IP addresses or CIDRs that bypass authentication                                                      |
 | `ALLOW_FORWARDED_FOR`       |          | false                |                                                | Retrieve origin IP from X-Forwarded-For. Enable only behind a trusted proxy                            |
 | `FORWARDED_FOR_TRUST_LEVEL` |          | 1                    |                                                | Number of trusted proxy levels in X-Forwarded-For                                                     |
 
 See the [generic OIDC guide](docs/authentication/OIDC.md) for provider setup, security behavior, logout, and troubleshooting.
+
+See the [LDAP guide](docs/authentication/LDAP.md) for directory setup, group restrictions, TLS configuration, and troubleshooting.
+
+For a complete Docker Compose deployment example, see the [LDAP deployment guide](docs/deployment/LDAP.md).
 
 See the [API logging schema](docs/monitoring/LOGGING_SCHEMA.md) for event fields, ECS and OpenTelemetry mappings, correlation behavior, and excluded sensitive data.
