@@ -93,14 +93,14 @@ func TestValidateLDAPAuthenticationConfiguration(t *testing.T) {
 			UserFilter:        validLDAP.UserFilter,
 			UsernameAttribute: validLDAP.UsernameAttribute,
 		}), appURI: "https://go.example.com", errorText: "LDAP_BIND_PASSWORD"},
-		{name: "plain LDAP", auth: validAuth(LDAP{
+		{name: "LDAP without StartTLS", auth: validAuth(LDAP{
 			URL:               "ldap://ldap.example.com",
 			BindDN:            validLDAP.BindDN,
 			BindPassword:      validLDAP.BindPassword,
 			UserSearchBase:    validLDAP.UserSearchBase,
 			UserFilter:        validLDAP.UserFilter,
 			UsernameAttribute: validLDAP.UsernameAttribute,
-		}), appURI: "https://go.example.com", errorText: "LDAP_STARTTLS=true"},
+		}), appURI: "https://go.example.com"},
 		{name: "StartTLS with LDAPS", auth: validAuth(LDAP{
 			URL:               validLDAP.URL,
 			StartTLS:          true,

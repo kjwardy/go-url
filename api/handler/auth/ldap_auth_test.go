@@ -316,6 +316,23 @@ func TestLDAPStartTLSUsesVerifiedServerConfig(t *testing.T) {
 	}
 }
 
+func TestLDAPWithoutStartTLSUsesPlainConnectionAndWarns(t *testing.T) {
+	conn := &fakeLDAPConn{}
+	ldapConfig := ldapTestConfig()
+	ldapConfig.StartTLS = false
+	var output bytes.Buffer
+	provider, _, _ := newTestLDAPProvider(t, ldapConfig, conn, &output)
+	if _, err := provider.connect(); err != nil {
+		t.Fatal(err)
+	}
+	if conn.startTLSConfig != nil {
+		t.Errorf("plain LDAP connection unexpectedly attempted StartTLS: %#v", conn.startTLSConfig)
+	}
+	if !strings.Contains(output.String(), `"ldap.transport":"plain"`) {
+		t.Errorf("plain LDAP warning missing from logs: %s", output.String())
+	}
+}
+
 func TestLDAPTLSCertificateValidation(t *testing.T) {
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	server.Config.ErrorLog = log.New(io.Discard, "", 0)

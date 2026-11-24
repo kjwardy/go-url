@@ -68,6 +68,13 @@ func NewLDAPProvider(ldapConfig config.LDAP, sessions *SessionManager, logger *l
 	if err != nil {
 		return nil, err
 	}
+	if strings.HasPrefix(ldapConfig.URL, "ldap://") && !ldapConfig.StartTLS && logger != nil {
+		logger.Event("WARN", "LDAP connection is unencrypted", "authentication", "warning", map[string]interface{}{
+			"auth.provider":  "ldap",
+			"ldap.starttls":  false,
+			"ldap.transport": "plain",
+		})
+	}
 	allowedGroups := make([]*ldap.DN, 0, len(ldapConfig.AllowedGroups))
 	for _, groupDN := range ldapConfig.AllowedGroups {
 		parsed, err := ldap.ParseDN(groupDN)

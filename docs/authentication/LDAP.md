@@ -27,7 +27,9 @@ LDAP_USERNAME_ATTRIBUTE=uid
 
 `LDAP_USERNAME_ATTRIBUTE` defaults to `uid`. If `LDAP_USER_FILTER` is omitted, it defaults to `(uid={username})` or uses the configured username attribute. The user filter must contain exactly one `{username}` placeholder; submitted usernames are LDAP-filter escaped before substitution. The directory search must return exactly one user entry.
 
-Use either `ldaps://` for implicit TLS or `ldap://` with `LDAP_STARTTLS=true`. Plain LDAP without StartTLS is rejected. TLS certificate verification is enabled by default, TLS 1.2 or newer is required, and `LDAP_CA_CERT_FILE` can add a PEM-encoded CA certificate to the system trust store.
+Use `ldaps://` for implicit TLS or `ldap://` with `LDAP_STARTTLS=true` to upgrade the connection before binding. With `ldap://` and `LDAP_STARTTLS` unset or false, go-url uses plain LDAP without transport encryption; the application logs a warning at startup. This exposes the bind and user passwords to network observers, so use it only when that risk is explicitly acceptable on a trusted, isolated network. Prefer LDAPS or StartTLS.
+
+TLS certificate verification is enabled by default, TLS 1.2 or newer is required, and `LDAP_CA_CERT_FILE` can add a PEM-encoded CA certificate to the system trust store.
 
 **Do not enable `LDAP_INSECURE_SKIP_VERIFY` in production.** It disables LDAP server certificate verification and makes the connection vulnerable to interception. Use it only in a controlled development environment when no trusted certificate is available.
 
