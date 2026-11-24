@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/logging"
@@ -54,7 +55,16 @@ func NewManager(ctx context.Context, authConfig config.Auth, appURI string, logg
 		provider.CallbackPath(): true,
 	}
 	if provider.Name() == "ldap" {
-		publicPath["/go/login"] = true
+		for _, path := range []string{
+			"/go/login",
+			"/go/config.js",
+			"/go/manifest.json",
+			"/go/favicon.ico",
+			"/go/logo.png",
+			"/go/logo.svg",
+		} {
+			publicPath[path] = true
+		}
 	}
 	return &Manager{
 		provider:   provider,
@@ -77,7 +87,7 @@ func (m *Manager) Authenticate(next echo.HandlerFunc, c echo.Context) error {
 }
 
 func (m *Manager) IsPublic(path string) bool {
-	return m.publicPath[path]
+	return m.publicPath[path] || (m.provider.Name() == "ldap" && strings.HasPrefix(path, "/go/static/"))
 }
 
 func (m *Manager) Identity(c echo.Context) (*Identity, error) {

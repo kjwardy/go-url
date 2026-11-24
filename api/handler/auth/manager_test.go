@@ -115,10 +115,24 @@ func TestLDAPManagerExposesLoginRoutesWithoutSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !manager.IsPublic(ldapLoginPath) || !manager.IsPublic(ldapLoginPage) {
-		t.Error("LDAP login routes must be public so an unauthenticated user can submit credentials")
+	for _, path := range []string{
+		ldapLoginPath,
+		ldapLoginPage,
+		"/go/config.js",
+		"/go/manifest.json",
+		"/go/favicon.ico",
+		"/go/logo.png",
+		"/go/static/js/main.abc123.js",
+		"/go/static/css/main.abc123.css",
+	} {
+		if !manager.IsPublic(path) {
+			t.Errorf("LDAP login asset %q must be public so an unauthenticated user can sign in", path)
+		}
 	}
 	if manager.IsPublic("/api/search") {
 		t.Error("ordinary API routes must still require authentication")
+	}
+	if manager.IsPublic("/go/private") {
+		t.Error("unlisted application routes must still require authentication")
 	}
 }
