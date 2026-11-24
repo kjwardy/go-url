@@ -222,17 +222,11 @@ func validateLDAP(c LDAP, appURI string) error {
 	if err != nil || serverURL.Host == "" || serverURL.User != nil || serverURL.RawQuery != "" || serverURL.Fragment != "" || (serverURL.Path != "" && serverURL.Path != "/") {
 		return fmt.Errorf("LDAP_URL must be an LDAP server URL without credentials or a path")
 	}
-	switch serverURL.Scheme {
-	case "ldaps":
-		if c.StartTLS {
-			return fmt.Errorf("LDAP_STARTTLS cannot be enabled with an ldaps:// LDAP_URL")
-		}
-	case "ldap":
-		if !c.StartTLS {
-			return fmt.Errorf("LDAP_STARTTLS=true is required with an ldap:// LDAP_URL")
-		}
-	default:
+	if serverURL.Scheme != "ldap" && serverURL.Scheme != "ldaps" {
 		return fmt.Errorf("LDAP_URL must use ldap:// or ldaps://")
+	}
+	if serverURL.Scheme == "ldaps" && c.StartTLS {
+		return fmt.Errorf("LDAP_STARTTLS cannot be enabled with an ldaps:// LDAP_URL")
 	}
 	if err := validateAuthURL("APP_URI", appURI, false); err != nil {
 		return err

@@ -21,7 +21,7 @@ chmod 600 .env.ldap
 
 The sample restricts sign-in to the configured group. Change the group search base, filter, and allowed group DN to match your directory. To allow every user found by the user search, remove all three `LDAP_GROUP_*`/`LDAP_ALLOWED_GROUPS` settings from `.env.ldap`.
 
-The sample uses LDAPS and system-trusted certificates. For `ldap://` with StartTLS, set `LDAP_URL=ldap://ldap.example.com:389` and `LDAP_STARTTLS=true`. Never disable certificate verification in production. For a private CA, add its certificate to the application container:
+The sample uses LDAPS and system-trusted certificates. For `ldap://` with StartTLS, set `LDAP_URL=ldap://ldap.example.com:389` and `LDAP_STARTTLS=true`. If StartTLS is disabled or unset, `ldap://` sends bind and user passwords without transport encryption; use this only when that risk is explicitly acceptable on a trusted, isolated network. Never disable certificate verification in production. For a private CA, add its certificate to the application container:
 
 ```yaml
     volumes:
