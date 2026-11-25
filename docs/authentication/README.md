@@ -15,7 +15,7 @@ Enable exactly one provider with `ENABLE_AUTH=true` and `AUTH_PROVIDER=azure`, `
 
 `AUTH_EXPIRY_SECONDS` controls session lifetime and defaults to 2,592,000 seconds (30 days). Successful login creates an application session; its cookie is HTTP-only, SameSite Lax, and Secure when `SECURE_COOKIES=true` (the default). The separate `user` cookie is only for frontend display and is not an authorization credential. `POST /logout` clears the local session and display cookie. Azure AD, Okta, and LDAP sign-out is local to go-url; the identity provider may retain its own SSO session. Generic OIDC also redirects to the provider's end-session endpoint when discovery advertises one.
 
-When running multiple application instances, use the same `SESSION_TOKEN` and ensure they share the session store.
+Session data is stored in the application's PostgreSQL database and expires according to `AUTH_EXPIRY_SECONDS`, so it survives application pod replacement without a persistent volume. Sessions created by older versions using local filesystem storage cannot be migrated and require signing in again after upgrading. When running multiple application instances, use the same `SESSION_TOKEN` and database so they share sessions.
 
 For remote deployments, set `APP_URI` to the canonical HTTPS origin with no trailing slash and set `SECURE_COOKIES=true`. Place the application behind an HTTPS reverse proxy and register the exact provider callback URL shown in its guide. `SECURE_COOKIES=false` is for loopback-only local development; it is not a workaround for an incorrectly terminated production proxy.
 
