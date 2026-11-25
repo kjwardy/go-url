@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/db"
 	"github.com/kjwardy/go-url/api/handler"
 	"github.com/kjwardy/go-url/api/handler/auth"
 	"github.com/kjwardy/go-url/api/logging"
@@ -27,7 +28,7 @@ func Init(e *echo.Echo, logger *logging.Logger) error {
 
 	appConfig := config.GetConfig()
 	if appConfig.Auth.Enabled {
-		manager, err := auth.NewManager(context.Background(), appConfig.Auth, appConfig.AppURI, logger)
+		manager, err := auth.NewManager(context.Background(), appConfig.Auth, appConfig.AppURI, logger, db.GetDB())
 		if err != nil {
 			logger.Event("ERROR", "Authentication provider initialization failed", "authentication", "failure", map[string]interface{}{
 				"auth.provider": appConfig.Auth.Provider,

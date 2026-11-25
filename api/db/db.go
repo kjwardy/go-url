@@ -86,6 +86,25 @@ func createSchema(logger *logging.Logger) error {
 	}
 
 	_, err = database.Exec(`
+		CREATE TABLE IF NOT EXISTS go_url_sessions (
+			id text PRIMARY KEY,
+			data bytea NOT NULL,
+			expires_at timestamptz NOT NULL
+		)
+	`)
+	if err := schemaError(logger, "create_sessions_table", err); err != nil {
+		return err
+	}
+
+	_, err = database.Exec(`
+		CREATE INDEX IF NOT EXISTS go_url_sessions_expires_at_idx
+		ON go_url_sessions (expires_at)
+	`)
+	if err := schemaError(logger, "create_sessions_expiry_index", err); err != nil {
+		return err
+	}
+
+	_, err = database.Exec(`
 		ALTER TABLE url_queries
 			ADD COLUMN IF NOT EXISTS successful boolean NOT NULL DEFAULT true;
 		ALTER TABLE url_queries

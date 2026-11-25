@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-pg/pg"
 	"github.com/gorilla/sessions"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/logging"
@@ -111,7 +112,7 @@ func TestLDAPManagerExposesLoginRoutesWithoutSession(t *testing.T) {
 		SecureCookies:          true,
 		ForwardedForTrustLevel: 1,
 		LDAP:                   ldapConfig,
-	}, "https://go.example.com", logging.New(logging.Config{}))
+	}, "https://go.example.com", logging.New(logging.Config{}), &pg.DB{})
 	if err != nil {
 		t.Fatal(err)
 	}

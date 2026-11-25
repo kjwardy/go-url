@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-pg/pg"
 	"github.com/gorilla/sessions"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/labstack/echo"
@@ -39,17 +40,8 @@ type SessionManager struct {
 
 var registerSessionTypes sync.Once
 
-func NewSessionManager(authConfig config.Auth) *SessionManager {
-	store := sessions.NewFilesystemStore("", []byte(authConfig.SessionToken), nil)
-	store.MaxLength(0)
-	store.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   authConfig.MaxAge,
-		HttpOnly: true,
-		Secure:   authConfig.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
-	}
-	store.MaxAge(authConfig.MaxAge)
+func NewSessionManager(authConfig config.Auth, database *pg.DB) *SessionManager {
+	store := newPostgresSessionStore(database, authConfig)
 	return newSessionManager(store, authConfig.MaxAge, authConfig.SecureCookies)
 }
 

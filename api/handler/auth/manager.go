@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-pg/pg"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/logging"
 	"github.com/labstack/echo"
@@ -29,8 +30,11 @@ type Manager struct {
 	publicPath map[string]bool
 }
 
-func NewManager(ctx context.Context, authConfig config.Auth, appURI string, logger *logging.Logger) (*Manager, error) {
-	sessions := NewSessionManager(authConfig)
+func NewManager(ctx context.Context, authConfig config.Auth, appURI string, logger *logging.Logger, database *pg.DB) (*Manager, error) {
+	if database == nil {
+		return nil, fmt.Errorf("database connection is required for authentication sessions")
+	}
+	sessions := NewSessionManager(authConfig, database)
 	var provider Provider
 	var err error
 	switch authConfig.Provider {
