@@ -197,7 +197,7 @@ func validProviderURL(value *url.URL) bool {
 }
 
 func (p *OIDCProvider) failure(c echo.Context, errorType string) {
-	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType)
+	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType, requestSourceIP(c))
 }
 
 func stringClaim(claims map[string]interface{}, name string) (string, bool) {

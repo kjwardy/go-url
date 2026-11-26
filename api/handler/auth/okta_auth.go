@@ -135,5 +135,5 @@ func (p *OktaProvider) LogoutURL(string) (string, bool) {
 }
 
 func (p *OktaProvider) failure(c echo.Context, errorType string) {
-	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType)
+	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType, requestSourceIP(c))
 }

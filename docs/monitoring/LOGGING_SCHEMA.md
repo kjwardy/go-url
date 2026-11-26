@@ -1,6 +1,6 @@
 # API Logging Schema
 
-This document describes the implemented JSON schema for application logs written to stdout. Structured request, URL query, frontend, lifecycle, database, authentication, Slack, and background-task events are available when `JSON_LOGS=true`.
+This document describes the JSON schema for application logs written to stdout. `JSON_LOGS=true` emits structured JSON for request, URL query, frontend, lifecycle, database, authentication, Slack, and background-task events. Audit events are always emitted as structured JSON, regardless of `JSON_LOGS`.
 
 The application emits Elastic Common Schema (ECS)-shaped JSON because Elastic Agent is the expected initial consumer. The selected fields either match OpenTelemetry semantic conventions directly or have a documented mapping to the OpenTelemetry Logs Data Model. Fields specific to `go-url` use the `go_url.*` namespace.
 
@@ -17,6 +17,8 @@ See the [Elastic Agent example](ELASTIC_AGENT.md) and [OpenTelemetry Collector e
 | `log.level` | native | `SeverityText` | Text severity: `DEBUG`, `INFO`, `WARN`, or `ERROR` |
 | `message` | native | `Body` | Short, stable human-readable description |
 | `event.action` | native | `EventName` | Stable machine-readable event type |
+| `event.kind` | native | record attribute | `event` for dedicated audit records |
+| `event.dataset` | native | record attribute | `go_url.audit` identifies dedicated audit records |
 | `event.category` | native | record attribute | High-level ECS event category array |
 | `event.type` | native | record attribute | ECS event type array |
 | `event.outcome` | native | record attribute | Whether the operation succeeded or failed |
@@ -33,8 +35,10 @@ See the [Elastic Agent example](ELASTIC_AGENT.md) and [OpenTelemetry Collector e
 | `slack.operation` | custom | record attribute | Slack command, connection, or message operation |
 | `background.task` | custom | record attribute | Stable name of a background task |
 | `frontend.component` | custom | record attribute | Allowlisted frontend component associated with a reported event |
-| `source.ip` | native | record attribute | Client IP attributed to a query or frontend event |
+| `source.ip` | native | record attribute | Client IP attributed to a query, frontend, or audit event |
 | `user.name` | native | record attribute | Authenticated username from the server-side session |
+| `user.id` | native | record attribute | Stable authenticated subject from the identity provider |
+| `go_url.url.key` | custom | record attribute | URL key affected by an audited management action |
 | `error.type` | native | record attribute | Stable error category; never a raw error string |
 | `trace.id` | native | `TraceId` | W3C trace identifier when tracing is introduced |
 | `span.id` | native | `SpanId` | W3C span identifier when tracing is introduced |
@@ -54,6 +58,8 @@ Every record contains:
 | `message` | string | yes | Stable human-readable event description |
 | `event.action` | string | yes | Stable event identifier |
 | `event.outcome` | string | yes | `success` or `failure` |
+| `event.kind` | string | no | `event` on dedicated audit records |
+| `event.dataset` | string | no | `go_url.audit` on dedicated audit records |
 | `service.name` | string | yes | `go-url-api` |
 | `service.version` | string | no | Released application version |
 | `service.environment` | string | no | Deployment environment such as `production` |
@@ -66,8 +72,10 @@ Every record contains:
 | `slack.operation` | string | no | Slack command, connection, or message operation |
 | `background.task` | string | no | Stable name of a background task |
 | `frontend.component` | string | no | Allowlisted frontend component associated with a reported event |
-| `source.ip` | string | no | Client IP attributed to a query or frontend event; query events use the direct connection unless trusted forwarded-header handling is enabled |
+| `source.ip` | string | no | Client IP attributed to query, frontend, or audit events; query and audit events use the direct connection unless trusted forwarded-header handling is enabled |
 | `user.name` | string | no | Authenticated username from the server-side session |
+| `user.id` | string | no | Stable authenticated subject from the identity provider |
+| `go_url.url.key` | string | no | URL key affected by an audited management action |
 | `error.type` | string | no | Stable error category, not raw error text |
 | `trace.id` | string | no | W3C trace ID when distributed tracing is introduced |
 | `span.id` | string | no | W3C span ID when distributed tracing is introduced |
@@ -132,19 +140,30 @@ An unresolved query uses the same schema with `event.outcome` set to `failure`, 
 
 `source.ip` uses the direct peer address from `RemoteAddr` by default. `X-Forwarded-For` is considered only when `ALLOW_FORWARDED_FOR=true`; the configured `FORWARDED_FOR_TRUST_LEVEL` selects the address from the trusted proxy chain. Enable this only when the application is reachable through proxies that overwrite or correctly append the header. Without an authenticated session—including requests from IP allowlisted users who bypass login—`user.name` is omitted.
 
-## Authentication failure event
+## Audit events
 
-Event action: `authentication`
+Audit events are distinct from request and query events: they use `event.dataset: "go_url.audit"`, `event.kind: "event"`, and `event.action` values prefixed with `audit.`. They are always emitted as JSON to stdout, including when `JSON_LOGS=false`.
 
-Authentication failures use `event.outcome: failure`, `auth.provider`, and a stable `error.type`. Supported categories include invalid state or nonce, token exchange and validation failures, missing identity claims, and session failures. Authorization codes, state, nonce, PKCE verifiers, tokens, client secrets, and provider response bodies are never included.
+| `event.action` | `event.type` | Description |
+| --- | --- | --- |
+| `audit.authentication.login` | `["user", "start"]` | A user successfully authenticated |
+| `audit.authentication.logout` | `["user", "end"]` | A local session was successfully cleared |
+| `audit.authentication.failure` | `["user", "error"]` | Authentication failed |
+| `audit.url.create` | `["creation"]` | A URL was created or a create attempt failed |
+| `audit.url.update` | `["change"]` | A URL was updated or an update attempt failed |
+| `audit.url.delete` | `["deletion"]` | A URL was deleted or a delete attempt failed |
+
+Audit events include `@timestamp`, `event.outcome`, `http.request.id`, and `source.ip` when available. Authenticated actions also include `user.name`, `user.id` (the provider subject), and `auth.provider`. Failed authentication includes only the provider and a stable `error.type`; unverified usernames are not recorded. URL management events include the normalized `go_url.url.key` and never include the destination URL or request body. Invalid keys are omitted.
+
+`source.ip` uses the direct peer address by default. `X-Forwarded-For` is considered only when `ALLOW_FORWARDED_FOR=true`, using `FORWARDED_FOR_TRUST_LEVEL`; enable this only behind proxies that overwrite or correctly append the header. Authentication failures include invalid login requests, invalid state or nonce, token exchange and validation failures, missing identity claims, and session failures. Credentials, authorization codes, state, nonce, PKCE verifiers, tokens, and provider response bodies are never included.
+
+Provider initialization continues to use the ordinary `authentication` event action; it is not an audit event.
 
 Example:
 
 ```json
-{"@timestamp":"2026-09-22T14:30:00.122000000Z","ecs.version":"9.5.0","log.level":"WARN","message":"Authentication failed","event.action":"authentication","event.outcome":"failure","service.name":"go-url-api","http.request.id":"871de03da4de4fa68a6d1926f7067037","auth.provider":"oidc","error.type":"invalid_state"}
+{"@timestamp":"2026-11-24T20:00:00.123456789Z","ecs.version":"9.5.0","log.level":"INFO","message":"URL updated","event.action":"audit.url.update","event.kind":"event","event.dataset":"go_url.audit","event.category":["web"],"event.type":["change"],"event.outcome":"success","service.name":"go-url-api","http.request.id":"871de03da4de4fa68a6d1926f7067037","source.ip":"203.0.113.25","auth.provider":"ldap","user.name":"alice","user.id":"uid=alice,ou=people,dc=example,dc=com","go_url.url.key":"handbook"}
 ```
-
-The same action records provider initialization success and failure with the configured provider. Request authentication failures include `http.request.id`; startup events do not.
 
 ## Application lifecycle events
 
@@ -193,7 +212,7 @@ Frontend reporting is best-effort: a rejected report request is ignored by the b
 
 ## Privacy and retention
 
-Query events can associate a requested key with a source IP and authenticated username. Source IPs and usernames may be personal data, and queried keys may reveal user interests or behavior. Collect and retain these fields only for a documented operational need, restrict log access, and use a retention period of 30 days or shorter where practical; follow any stricter organizational or legal policy. Apply retention at the log collector or storage backend. Container log rotation limits local disk use but does not delete copies already shipped to centralized storage.
+Query and audit events can associate URL keys or management actions with a source IP and authenticated username or subject. Source IPs and identities may be personal data, and URL keys may reveal user interests or behavior. Collect and retain these fields only for a documented operational need, restrict log access, and use a retention period of 30 days or shorter where practical; follow any stricter organizational or legal policy. Apply retention at the log collector or storage backend. Container log rotation limits local disk use but does not delete copies already shipped to centralized storage.
 
 ## Error conventions
 

@@ -12,6 +12,8 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/gorilla/sessions"
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
+	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
 )
 
@@ -33,16 +35,23 @@ type PendingLogin struct {
 }
 
 type SessionManager struct {
-	store         sessions.Store
-	maxAge        int
-	secureCookies bool
+	store                  sessions.Store
+	maxAge                 int
+	secureCookies          bool
+	allowForwardedFor      bool
+	forwardedForTrustLevel int
+	logger                 *logging.Logger
 }
 
 var registerSessionTypes sync.Once
 
-func NewSessionManager(authConfig config.Auth, database *pg.DB) *SessionManager {
+func NewSessionManager(authConfig config.Auth, database *pg.DB, logger *logging.Logger) *SessionManager {
 	store := newPostgresSessionStore(database, authConfig)
-	return newSessionManager(store, authConfig.MaxAge, authConfig.SecureCookies)
+	manager := newSessionManager(store, authConfig.MaxAge, authConfig.SecureCookies)
+	manager.allowForwardedFor = authConfig.AllowForwardedFor
+	manager.forwardedForTrustLevel = authConfig.ForwardedForTrustLevel
+	manager.logger = logger
+	return manager
 }
 
 func newSessionManager(store sessions.Store, maxAge int, secureCookies bool) *SessionManager {
@@ -142,6 +151,7 @@ func (m *SessionManager) CompleteLogin(c echo.Context, identity *Identity, idTok
 		return "", err
 	}
 	m.setUserCookie(c, identity.Username, m.maxAge)
+	m.auditAuthentication(c, logging.AuditAuthenticationLogin, logging.AuditSuccess, identity)
 	return redirectPath, nil
 }
 
@@ -151,13 +161,41 @@ func (m *SessionManager) Logout(c echo.Context) (string, error) {
 		return "", err
 	}
 	idToken, _ := session.Values["id_token"].(string)
+	identity, _ := session.Values["identity"].(*Identity)
+	if session.Values["authenticated"] != true {
+		identity = nil
+	}
 	session.Options.MaxAge = -1
 	session.Values = map[interface{}]interface{}{}
 	if err := session.Save(c.Request(), c.Response()); err != nil {
 		return "", err
 	}
 	m.setUserCookie(c, "", -1)
+	m.auditAuthentication(c, logging.AuditAuthenticationLogout, logging.AuditSuccess, identity)
 	return idToken, nil
+}
+
+func (m *SessionManager) auditAuthentication(c echo.Context, action logging.AuditAction, outcome logging.AuditOutcome, identity *Identity) {
+	if m.logger == nil {
+		return
+	}
+	event := logging.AuditEvent{
+		Action:    action,
+		Outcome:   outcome,
+		RequestID: logging.RequestID(c),
+		SourceIP: utils.ClientIP(
+			c.Request().RemoteAddr,
+			c.Request().Header.Get("X-Forwarded-For"),
+			m.allowForwardedFor,
+			m.forwardedForTrustLevel,
+		),
+	}
+	if identity != nil {
+		event.Provider = identity.Provider
+		event.Subject = identity.Subject
+		event.Username = identity.Username
+	}
+	m.logger.Audit(event)
 }
 
 func (m *SessionManager) setUserCookie(c echo.Context, username string, maxAge int) {

@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"io"
 	"mime"
-	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/kjwardy/go-url/api/logging"
+	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
 )
 
@@ -105,7 +104,7 @@ func (h *Handler) ReportFrontendEvent(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Frontend event reporting is unavailable")
 	}
 
-	ip := remoteIP(c.Request().RemoteAddr)
+	ip := utils.RemoteIP(c.Request().RemoteAddr)
 	if !h.FrontendEventLimiter.allow(ip) {
 		return echo.NewHTTPError(http.StatusTooManyRequests, "Frontend event rate limit exceeded")
 	}
@@ -221,15 +220,4 @@ func frontendOperationLevel(outcome string) string {
 		return "WARN"
 	}
 	return "INFO"
-}
-
-func remoteIP(remoteAddr string) string {
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err != nil {
-		host = strings.Trim(remoteAddr, "[]")
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.String()
-	}
-	return ""
 }

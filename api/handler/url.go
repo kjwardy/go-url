@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kjwardy/go-url/api/config"
+	"github.com/kjwardy/go-url/api/logging"
 	"github.com/kjwardy/go-url/api/model"
 	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
@@ -37,7 +38,7 @@ func (h *Handler) logQueryOutcomes(c echo.Context, keys []string, found []*model
 		return
 	}
 	authConfig := config.GetConfig().Auth
-	clientIP := sourceIP(
+	clientIP := utils.ClientIP(
 		c.Request().RemoteAddr,
 		c.Request().Header.Get("X-Forwarded-For"),
 		authConfig.AllowForwardedFor,
@@ -64,6 +65,41 @@ func (h *Handler) logQueryOutcomes(c echo.Context, keys []string, found []*model
 		logged[normalized] = true
 		h.Logger.QueueQuery(c, normalized, resolved[normalized], clientIP, username)
 	}
+}
+
+func (h *Handler) auditURLChange(c echo.Context, action logging.AuditAction, outcome logging.AuditOutcome, key string) {
+	if h.Logger == nil {
+		return
+	}
+	authConfig := config.GetConfig().Auth
+	event := logging.AuditEvent{
+		Action:    action,
+		Outcome:   outcome,
+		RequestID: logging.RequestID(c),
+		SourceIP: utils.ClientIP(
+			c.Request().RemoteAddr,
+			c.Request().Header.Get("X-Forwarded-For"),
+			authConfig.AllowForwardedFor,
+			authConfig.ForwardedForTrustLevel,
+		),
+		URLKey: key,
+	}
+	if h.Auth != nil {
+		if identity, err := h.Auth.Identity(c); err == nil {
+			event.Provider = identity.Provider
+			event.Subject = identity.Subject
+			event.Username = identity.Username
+		}
+	}
+	h.Logger.Audit(event)
+}
+
+func auditURLKey(key string) string {
+	key = strings.ToLower(key)
+	if !ValidateKey(key) {
+		return ""
+	}
+	return key
 }
 
 // Url is the handler function for finding a url
@@ -215,24 +251,30 @@ func (h *Handler) validateUrl(c echo.Context) (*model.URL, error) {
 func (h *Handler) UpdateUrl(c echo.Context) error {
 	u, err := h.validateUrl(c)
 	if err != nil {
+		h.auditURLChange(c, logging.AuditURLUpdate, logging.AuditFailure, auditURLKey(c.Param("key")))
 		return err
 	}
 	if err := u.Update(); err != nil {
+		h.auditURLChange(c, logging.AuditURLUpdate, logging.AuditFailure, u.Key)
 		return err
 	}
+	h.auditURLChange(c, logging.AuditURLUpdate, logging.AuditSuccess, u.Key)
 	return c.JSON(http.StatusOK, u)
 }
 
 func (h *Handler) CreateUrl(c echo.Context) error {
 	u, err := h.validateUrl(c)
 	if err != nil {
+		h.auditURLChange(c, logging.AuditURLCreate, logging.AuditFailure, auditURLKey(c.Param("key")))
 		return err
 	}
 	// Save post in database
 	if err := u.Save(); err != nil {
+		h.auditURLChange(c, logging.AuditURLCreate, logging.AuditFailure, u.Key)
 		message := fmt.Sprintf("%s already exists. To update the url please search for it and use the edit button.", u.Key)
 		return echo.NewHTTPError(http.StatusBadRequest, message)
 	}
+	h.auditURLChange(c, logging.AuditURLCreate, logging.AuditSuccess, u.Key)
 	return c.JSON(http.StatusOK, u)
 }
 
@@ -240,17 +282,22 @@ func (h *Handler) CreateUrl(c echo.Context) error {
 func (h *Handler) DeleteUrl(c echo.Context) error {
 	key := strings.ToLower(c.Param("key"))
 	if !ValidateKey(key) {
+		h.auditURLChange(c, logging.AuditURLDelete, logging.AuditFailure, "")
 		return echo.NewHTTPError(http.StatusBadRequest, "The key provided is not valid. It can only contain letters, numbers, spaces, _ and -")
 	}
 	u, err := urlModel.Find(key)
 	if err != nil {
+		h.auditURLChange(c, logging.AuditURLDelete, logging.AuditFailure, key)
 		return err
 	}
 	if u == nil {
+		h.auditURLChange(c, logging.AuditURLDelete, logging.AuditFailure, key)
 		return echo.NewHTTPError(http.StatusNotFound, fmt.Sprintf("%s was not found in the database", key))
 	}
 	if err := u.Delete(); err != nil {
+		h.auditURLChange(c, logging.AuditURLDelete, logging.AuditFailure, key)
 		return err
 	}
+	h.auditURLChange(c, logging.AuditURLDelete, logging.AuditSuccess, key)
 	return c.NoContent(http.StatusNoContent)
 }

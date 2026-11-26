@@ -33,4 +33,4 @@ Leave `ENABLE_AUTH=false` and `AUTH_PROVIDER` plus all provider-specific setting
 - **TLS or certificate errors:** Verify the provider and application trust chains. For LDAP, also check the configured CA file and StartTLS/LDAPS mode.
 - **Login succeeds at the provider but go-url rejects it:** Check the configured issuer, provider app assignment, required API permissions, and required username claim or directory attribute.
 
-Authentication failures are logged using stable categories. Passwords, client secrets, authorization codes, tokens, and raw provider responses are not logged.
+Authentication successes, failures, and logouts are recorded as audit events. Passwords, client secrets, authorization codes, tokens, and raw provider responses are not logged. See the [logging schema](../monitoring/LOGGING_SCHEMA.md#audit-events) for event fields and retention guidance.
