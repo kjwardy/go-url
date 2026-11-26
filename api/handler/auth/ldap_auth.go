@@ -165,9 +165,11 @@ func (p *LDAPProvider) LogoutURL(string) (string, bool) {
 func (p *LDAPProvider) login(c echo.Context) error {
 	request, err := decodeLDAPLoginRequest(c)
 	if err != nil {
+		p.failure(c, "invalid_login_request")
 		return err
 	}
 	if strings.TrimSpace(request.Username) == "" || len(request.Username) > maxLDAPUsernameSize || request.Password == "" || len(request.Password) > maxLDAPPasswordSize {
+		p.failure(c, "invalid_login_request")
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid login request")
 	}
 
@@ -352,6 +354,6 @@ func isLDAPInvalidCredentials(err error) bool {
 
 func (p *LDAPProvider) failure(c echo.Context, errorType string) {
 	if p.logger != nil {
-		p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType)
+		p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType, requestSourceIP(c))
 	}
 }

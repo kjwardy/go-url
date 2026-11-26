@@ -186,15 +186,79 @@ func TestSuccessfulQueryLogCategorization(t *testing.T) {
 
 func TestAuthenticationFailureLog(t *testing.T) {
 	var output bytes.Buffer
-	logger := New(Config{JSON: true, Output: &output})
-	logger.AuthenticationFailure("request-123", "oidc", "invalid_state")
+	logger := New(Config{Output: &output})
+	logger.AuthenticationFailure("request-123", "oidc", "invalid_state", "203.0.113.25")
 
 	entry := decodeEntry(t, output.Bytes())
-	assertEqual(t, entry["event.action"], "authentication")
+	assertEqual(t, entry["event.action"], "audit.authentication.failure")
+	assertEqual(t, entry["event.kind"], "event")
+	assertEqual(t, entry["event.dataset"], "go_url.audit")
+	assertStringArray(t, entry, "event.category", "authentication")
+	assertStringArray(t, entry, "event.type", "user", "error")
 	assertEqual(t, entry["event.outcome"], "failure")
 	assertEqual(t, entry["auth.provider"], "oidc")
 	assertEqual(t, entry["http.request.id"], "request-123")
 	assertEqual(t, entry["error.type"], "invalid_state")
+	assertEqual(t, entry["source.ip"], "203.0.113.25")
+	if _, ok := entry["user.name"]; ok {
+		t.Errorf("unexpected user.name on authentication failure: %#v", entry["user.name"])
+	}
+	for _, excluded := range []string{"password", "token", "authorization code"} {
+		if strings.Contains(strings.ToLower(output.String()), excluded) {
+			t.Errorf("authentication audit log contains %q: %s", excluded, output.String())
+		}
+	}
+}
+
+func TestAuditURLMutationIsDistinctStructuredJSON(t *testing.T) {
+	var output bytes.Buffer
+	logger := New(Config{Output: &output})
+	logger.Audit(AuditEvent{
+		Action:    AuditURLUpdate,
+		Outcome:   AuditSuccess,
+		RequestID: "audit-request",
+		SourceIP:  "198.51.100.10",
+		Provider:  "ldap",
+		Username:  "alice",
+		Subject:   "uid=alice,ou=people",
+		URLKey:    "handbook",
+	})
+
+	entry := decodeEntry(t, output.Bytes())
+	assertEqual(t, entry["event.action"], "audit.url.update")
+	assertEqual(t, entry["event.kind"], "event")
+	assertEqual(t, entry["event.dataset"], "go_url.audit")
+	assertEqual(t, entry["event.outcome"], "success")
+	assertStringArray(t, entry, "event.category", "web")
+	assertStringArray(t, entry, "event.type", "change")
+	assertEqual(t, entry["http.request.id"], "audit-request")
+	assertEqual(t, entry["source.ip"], "198.51.100.10")
+	assertEqual(t, entry["auth.provider"], "ldap")
+	assertEqual(t, entry["user.name"], "alice")
+	assertEqual(t, entry["user.id"], "uid=alice,ou=people")
+	assertEqual(t, entry["go_url.url.key"], "handbook")
+	for _, excluded := range []string{"go_url.url.url", "destination_url", "target"} {
+		if _, ok := entry[excluded]; ok {
+			t.Errorf("unexpected sensitive field %q in audit event", excluded)
+		}
+	}
+}
+
+func TestApplicationEventCannotClaimAuditClassification(t *testing.T) {
+	var output bytes.Buffer
+	logger := New(Config{JSON: true, Output: &output})
+	logger.Event("INFO", "Application event", "application.test", "success", map[string]interface{}{
+		"event.kind":    "event",
+		"event.dataset": "go_url.audit",
+	})
+
+	entry := decodeEntry(t, output.Bytes())
+	if _, ok := entry["event.kind"]; ok {
+		t.Errorf("application event claimed audit event.kind: %#v", entry["event.kind"])
+	}
+	if _, ok := entry["event.dataset"]; ok {
+		t.Errorf("application event claimed audit event.dataset: %#v", entry["event.dataset"])
+	}
 }
 
 func TestInternalErrorIsSanitized(t *testing.T) {

@@ -51,6 +51,33 @@ type queryLog struct {
 	username   string
 }
 
+type AuditAction string
+type AuditOutcome string
+
+const (
+	AuditAuthenticationLogin   AuditAction = "audit.authentication.login"
+	AuditAuthenticationLogout  AuditAction = "audit.authentication.logout"
+	AuditAuthenticationFailure AuditAction = "audit.authentication.failure"
+	AuditURLCreate             AuditAction = "audit.url.create"
+	AuditURLUpdate             AuditAction = "audit.url.update"
+	AuditURLDelete             AuditAction = "audit.url.delete"
+
+	AuditSuccess AuditOutcome = "success"
+	AuditFailure AuditOutcome = "failure"
+)
+
+type AuditEvent struct {
+	Action    AuditAction
+	Outcome   AuditOutcome
+	RequestID string
+	SourceIP  string
+	Provider  string
+	Username  string
+	Subject   string
+	ErrorType string
+	URLKey    string
+}
+
 func New(config Config) *Logger {
 	if config.Output == nil {
 		config.Output = os.Stdout
@@ -95,12 +122,80 @@ func RequestID(c echo.Context) string {
 	return requestID
 }
 
-func (l *Logger) AuthenticationFailure(requestID, provider, errorType string) {
-	l.Event("WARN", "Authentication failed", "authentication", "failure", map[string]interface{}{
-		"http.request.id": requestID,
-		"auth.provider":   provider,
-		"error.type":      errorType,
+func (l *Logger) AuthenticationFailure(requestID, provider, errorType, sourceIP string) {
+	l.Audit(AuditEvent{
+		Action:    AuditAuthenticationFailure,
+		Outcome:   AuditFailure,
+		RequestID: requestID,
+		SourceIP:  sourceIP,
+		Provider:  provider,
+		ErrorType: errorType,
 	})
+}
+
+func (l *Logger) Audit(event AuditEvent) {
+	message, category, eventTypes := auditDescriptor(event.Action)
+	if event.Outcome == AuditFailure {
+		switch event.Action {
+		case AuditURLCreate:
+			message = "URL creation failed"
+		case AuditURLUpdate:
+			message = "URL update failed"
+		case AuditURLDelete:
+			message = "URL deletion failed"
+		}
+	}
+	level := "INFO"
+	if event.Outcome == AuditFailure {
+		level = "WARN"
+	}
+	fields := l.base(level, message, string(event.Action), time.Now().UTC())
+	fields["event.kind"] = "event"
+	fields["event.dataset"] = "go_url.audit"
+	fields["event.category"] = category
+	fields["event.type"] = eventTypes
+	fields["event.outcome"] = string(event.Outcome)
+	if event.RequestID != "" {
+		fields["http.request.id"] = event.RequestID
+	}
+	if event.SourceIP != "" {
+		fields["source.ip"] = event.SourceIP
+	}
+	if event.Provider != "" {
+		fields["auth.provider"] = event.Provider
+	}
+	if event.Username != "" {
+		fields["user.name"] = event.Username
+	}
+	if event.Subject != "" {
+		fields["user.id"] = event.Subject
+	}
+	if event.ErrorType != "" {
+		fields["error.type"] = event.ErrorType
+	}
+	if event.URLKey != "" {
+		fields["go_url.url.key"] = event.URLKey
+	}
+	l.writeJSON(fields)
+}
+
+func auditDescriptor(action AuditAction) (string, []string, []string) {
+	switch action {
+	case AuditAuthenticationLogin:
+		return "User login succeeded", []string{"authentication"}, []string{"user", "start"}
+	case AuditAuthenticationLogout:
+		return "User logout succeeded", []string{"authentication"}, []string{"user", "end"}
+	case AuditAuthenticationFailure:
+		return "Authentication failed", []string{"authentication"}, []string{"user", "error"}
+	case AuditURLCreate:
+		return "URL created", []string{"web"}, []string{"creation"}
+	case AuditURLUpdate:
+		return "URL updated", []string{"web"}, []string{"change"}
+	case AuditURLDelete:
+		return "URL deleted", []string{"web"}, []string{"deletion"}
+	default:
+		return "Audit event", []string{"web"}, []string{"info"}
+	}
 }
 
 func (l *Logger) Event(level, message, action, result string, attributes map[string]interface{}) {
@@ -108,7 +203,7 @@ func (l *Logger) Event(level, message, action, result string, attributes map[str
 	fields["event.outcome"] = result
 	for key, value := range attributes {
 		switch key {
-		case "@timestamp", "ecs.version", "log.level", "message", "event.action", "event.outcome", "service.name", "service.version", "service.environment":
+		case "@timestamp", "ecs.version", "log.level", "message", "event.action", "event.kind", "event.dataset", "event.outcome", "service.name", "service.version", "service.environment":
 			continue
 		default:
 			fields[key] = value
@@ -211,7 +306,7 @@ func (l *Logger) write(fields map[string]interface{}) {
 	defer l.mu.Unlock()
 	// Emit JSON when configured, otherwise use human-readable format
 	if l.json {
-		_ = json.NewEncoder(l.output).Encode(fields)
+		l.writeJSONLocked(fields)
 		return
 	}
 	_, _ = fmt.Fprintf(l.output, "%s %s %s", fields["@timestamp"], fields["log.level"], fields["message"])
@@ -222,6 +317,16 @@ func (l *Logger) write(fields map[string]interface{}) {
 		}
 	}
 	_, _ = fmt.Fprintln(l.output)
+}
+
+func (l *Logger) writeJSON(fields map[string]interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.writeJSONLocked(fields)
+}
+
+func (l *Logger) writeJSONLocked(fields map[string]interface{}) {
+	_ = json.NewEncoder(l.output).Encode(fields)
 }
 
 func humanKey(key string) string {

@@ -12,6 +12,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/kjwardy/go-url/api/config"
 	"github.com/kjwardy/go-url/api/logging"
+	"github.com/kjwardy/go-url/api/utils"
 	"github.com/labstack/echo"
 )
 
@@ -34,7 +35,7 @@ func NewManager(ctx context.Context, authConfig config.Auth, appURI string, logg
 	if database == nil {
 		return nil, fmt.Errorf("database connection is required for authentication sessions")
 	}
-	sessions := NewSessionManager(authConfig, database)
+	sessions := NewSessionManager(authConfig, database, logger)
 	var provider Provider
 	var err error
 	switch authConfig.Provider {
@@ -96,6 +97,16 @@ func (m *Manager) IsPublic(path string) bool {
 
 func (m *Manager) Identity(c echo.Context) (*Identity, error) {
 	return m.sessions.Identity(c)
+}
+
+func requestSourceIP(c echo.Context) string {
+	authConfig := config.GetConfig().Auth
+	return utils.ClientIP(
+		c.Request().RemoteAddr,
+		c.Request().Header.Get("X-Forwarded-For"),
+		authConfig.AllowForwardedFor,
+		authConfig.ForwardedForTrustLevel,
+	)
 }
 
 func randomValue(size int) (string, error) {

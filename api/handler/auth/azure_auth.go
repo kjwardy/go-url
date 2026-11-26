@@ -110,7 +110,7 @@ func (p *AzureProvider) LogoutURL(string) (string, bool) {
 }
 
 func (p *AzureProvider) failure(c echo.Context, errorType string) {
-	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType)
+	p.logger.AuthenticationFailure(logging.RequestID(c), p.Name(), errorType, requestSourceIP(c))
 }
 
 func getAzureUser(ctx context.Context, client *http.Client) (*AzureUser, error) {
