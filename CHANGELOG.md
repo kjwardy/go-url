@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Display the running version and a GitHub link in a fixed footer
 - Support plain LDAP connections when `LDAP_STARTTLS` is disabled, with a startup warning about unencrypted transport
 
 ### Fixed
